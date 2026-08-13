@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import multer from "multer";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { JsonStore } from "./store/json-store.js";
@@ -11,6 +11,7 @@ import { importConversation } from "./services/importer.js";
 import { routePhotoRequest } from "./services/photo-router.js";
 import { OllamaClient } from "./services/ollama.js";
 import { ImageService } from "./services/comfyui.js";
+import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -21,8 +22,14 @@ const importsDir = path.join(dataDir, "imports");
 const workflowsDir = path.join(root, "config", "workflows");
 const profilePath = path.join(root, "config", "characters", "emily.json");
 const store = new JsonStore(dataDir);
-const ollama = new OllamaClient(process.env.OLLAMA_URL ?? "http://127.0.0.1:11434", process.env.OLLAMA_MODEL ?? "qwen2.5:7b");
+const ollama = new OllamaClient(
+  process.env.OLLAMA_URL ?? "http://127.0.0.1:11434",
+  process.env.OLLAMA_MODEL ?? "qwen2.5:7b",
+  process.env.OLLAMA_KEEP_ALIVE ?? "5m"
+);
 const images = new ImageService(process.env.COMFYUI_URL ?? "http://127.0.0.1:8188", root, refsDir, photosDir);
+const gpuHandoff = process.env.GPU_HANDOFF === "off" ? "off" : "auto";
+const inference = new InferenceCoordinator(ollama, gpuHandoff);
 const upload = multer({ dest: path.join(dataDir, ".uploads"), limits: { fileSize: 50 * 1024 * 1024 } });
 
 await Promise.all([store.init(), mkdir(refsDir, { recursive: true }), mkdir(photosDir, { recursive: true }), mkdir(importsDir, { recursive: true })]);
@@ -51,8 +58,24 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.0.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id });
+  res.json({ app: { ok: true, version: "4.1.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status() });
 });
+
+app.get("/api/diagnostics", async (_req, res) => {
+  const workflow = await selectedWorkflow();
+  res.json({
+    app: { ok: true, version: "4.1.0" },
+    ollama: await ollama.health(),
+    comfyui: await images.health(),
+    workflow: await images.profileDiagnostics(workflow),
+    inference: inference.status()
+  });
+});
+
+async function generatePhoto(request: PhotoRequest) {
+  const workflow = await selectedWorkflow();
+  return inference.runImage(workflow, () => images.generate(request, workflow));
+}
 
 const chatSchema = z.object({ message: z.string().trim().min(1).max(4000) });
 app.post("/api/chat", async (req, res, next) => {
@@ -61,7 +84,7 @@ app.post("/api/chat", async (req, res, next) => {
     const before = await store.read();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() };
     let reply: string;
-    try { reply = await ollama.chat(character, before.messages, before.memories, text); }
+    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, text)); }
     catch (error) {
       reply = `I’m here, but my local language model isn’t responding yet. Check Ollama in Settings. (${String(error).slice(0, 180)})`;
     }
@@ -74,7 +97,7 @@ app.post("/api/chat", async (req, res, next) => {
     });
     let photo = null;
     if (routing.route && routing.request) {
-      try { photo = await images.generate(routing.request, await selectedWorkflow()); }
+      try { photo = await generatePhoto(routing.request); }
       catch (error) { photo = { id: crypto.randomUUID(), filename: "", createdAt: new Date().toISOString(), status: "failed" as const, workflowProfile: (await selectedWorkflow()).id, prompt: routing.request.scene, request: routing.request, error: String(error) }; }
     }
     await store.update((state) => {
@@ -96,7 +119,7 @@ const photoSchema = z.object({
 app.post("/api/photos", async (req, res, next) => {
   try {
     const request = photoSchema.parse(req.body) as PhotoRequest;
-    const record = await images.generate(request, await selectedWorkflow());
+    const record = await generatePhoto(request);
     await store.update((state) => { state.photos.push(record); });
     res.status(202).json(record);
   } catch (error) { next(error); }

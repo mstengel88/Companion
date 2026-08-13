@@ -66,6 +66,34 @@ export class ImageService {
     return { ...base, comfyPromptId: body.prompt_id };
   }
 
+  async profileDiagnostics(profile: WorkflowProfile) {
+    if (profile.mode === "mock") {
+      return { ok: true, profile: profile.id, mode: profile.mode, workflowFile: null, foundPlaceholders: [], missingPlaceholders: [] };
+    }
+    if (!profile.workflowFile) {
+      return { ok: false, profile: profile.id, mode: profile.mode, workflowFile: null, foundPlaceholders: [], missingPlaceholders: [], error: "No workflowFile is configured." };
+    }
+    const workflowPath = path.resolve(this.root, profile.workflowFile);
+    try {
+      const raw = await readFile(workflowPath, "utf8");
+      JSON.parse(raw);
+      const expected = Object.values(profile.placeholders);
+      const found = expected.filter((token) => raw.includes(token));
+      const missing = expected.filter((token) => !raw.includes(token));
+      return {
+        ok: missing.length === 0,
+        profile: profile.id,
+        mode: profile.mode,
+        workflowFile: profile.workflowFile,
+        foundPlaceholders: found,
+        missingPlaceholders: missing,
+        error: missing.length ? "The API-format workflow is valid JSON but is missing configured placeholders." : undefined
+      };
+    } catch (error) {
+      return { ok: false, profile: profile.id, mode: profile.mode, workflowFile: profile.workflowFile, foundPlaceholders: [], missingPlaceholders: Object.values(profile.placeholders), error: String(error) };
+    }
+  }
+
   async refresh(record: PhotoRecord): Promise<PhotoRecord> {
     if (record.status !== "queued" || !record.comfyPromptId) return record;
     const response = await fetch(`${this.comfyUrl}/history/${encodeURIComponent(record.comfyPromptId)}`, {

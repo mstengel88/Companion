@@ -64,6 +64,7 @@ Open `http://127.0.0.1:3000` on the Windows PC.
 
 - Start with one 7B quantized Ollama model and an image workflow designed for 8 GB VRAM.
 - Do not assume Ollama and the image model can remain fully loaded at once. If image generation runs out of memory, stop active chat generation and let Ollama unload before retrying.
+- Leave `GPU_HANDOFF=auto` for the RTX 2080 Super. The app serializes inference and sends Ollama a `keep_alive: 0` unload request before it queues a real ComfyUI workflow. Settings → Runtime → Run diagnostics shows loaded-model VRAM and the last handoff result.
 - Begin around 832×1216 or lower and add upscaling as a separate pass.
 - Add reference conditioning and pose control one at a time so memory regressions are easy to identify.
 - Keep ComfyUI on localhost. Do not open port 8188 directly to the internet.

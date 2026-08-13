@@ -1,4 +1,4 @@
-# Emily AI Companion v4
+# Emily AI Companion v4.1
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -16,6 +16,8 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Local message, memory, reference, job, and photo metadata storage; completed ComfyUI outputs are polled and copied into the local library
 - Mock image mode for Mac development without a GPU
 - Windows 11 scripts and RTX 2080 Super deployment guidance
+- Serialized inference and optional Ollama-to-ComfyUI GPU handoff for 8 GB cards
+- Runtime diagnostics for Ollama, loaded-model VRAM, ComfyUI, and workflow placeholders
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -101,6 +103,8 @@ Copy `.env.example` to `.env`. Notable values:
 - `HOST=127.0.0.1`: local-only binding; keep this default initially.
 - `OLLAMA_MODEL=qwen2.5:7b`: conversational model.
 - `COMFYUI_PROFILE=mock`: workflow profile ID.
+- `OLLAMA_KEEP_ALIVE=5m`: normal chat-model residency before an image handoff.
+- `GPU_HANDOFF=auto`: unload the Ollama model before a real ComfyUI job; use `off` only when the models fit together.
 - `PHOTO_ROUTING=auto`: route direct/contextual photo requests from chat.
 - `AUTO_PHOTO_COOLDOWN_MINUTES=30`: avoid repeated automatic queues.
 

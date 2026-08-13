@@ -21,5 +21,6 @@ $("#reference-form").addEventListener("submit",async e=>{e.preventDefault();try{
 $("#import-form").addEventListener("submit",async e=>{e.preventDefault();try{const result=await api("/api/imports",{method:"POST",body:new FormData(e.target)});$("#import-result").textContent=JSON.stringify(result,null,2);await load();toast(`Imported ${result.messageCount} messages`);}catch(err){toast(err.message)}});
 $("#memory-list").addEventListener("click",async e=>{const id=e.target.dataset.memory;if(!id)return;await api(`/api/memories/${id}`,{method:"DELETE"});data.state.memories=data.state.memories.filter(x=>x.id!==id);render();});
 $("#health").addEventListener("click",async()=>{try{const h=await api("/api/health");toast(`App ✓ · Ollama ${h.ollama.ok?"✓":"offline"} · ComfyUI ${h.comfyui.ok?"✓":"offline"}`);}catch(err){toast(err.message)}});
+$("#diagnostics").addEventListener("click",async()=>{try{const result=await api("/api/diagnostics");$("#diagnostic-result").textContent=JSON.stringify(result,null,2);toast(result.workflow.ok?"Workflow profile is ready":"Workflow profile needs attention");}catch(err){toast(err.message)}});
 load().catch(err=>toast(err.message));
 setInterval(async()=>{ try { const photos=await api("/api/photos"); if(data){ data.state.photos=photos; render(); } } catch {} },10000);

@@ -47,7 +47,7 @@
         <header><div><small>INTEGRATIONS</small><h2>Settings</h2></div></header>
         <div class="panel"><h3>Emily reference images</h3><p>Add one or two canonical images. They stay local and are hashed for identity tracking.</p><form id="reference-form"><input type="file" name="references" accept="image/png,image/jpeg,image/webp" multiple required /><button>Upload references</button></form><div id="reference-list"></div></div>
         <div class="panel"><h3>Conversation import</h3><p>Generic JSON and labeled TXT are supported. The original export is retained so a source-specific adapter can be added later.</p><form id="import-form"><input type="file" name="conversation" accept=".json,.txt,application/json,text/plain" required /><button>Import</button></form><pre id="import-result"></pre></div>
-        <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div></div>
+        <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div><button id="diagnostics">Run diagnostics</button><pre id="diagnostic-result"></pre></div>
       </section>
     </main>
   </div>
