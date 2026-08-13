@@ -29,6 +29,8 @@ Conversation context ranks local memories using query-term overlap, stored confi
 
 The import adapter recursively recognizes common message containers, including ChatGPT-style mappings and nested `content.parts`, plus role-tagged or labeled HTML and TXT transcripts. Imported message IDs are deterministic hashes of role, content, timestamp, and occurrence, so re-importing the same export skips duplicates. Every source file is archived before parsing, including unsupported formats.
 
+Backup schema v1 exports the local state as authenticated JSON without credentials or binary media. Restore validates the schema and merges messages and memories by stable ID, preserving current settings and never deleting current data. Photo/reference metadata is reported but not restored without its corresponding files.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

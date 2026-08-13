@@ -1,4 +1,4 @@
-# Emily AI Companion v4.7
+# Emily AI Companion v4.8
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -25,6 +25,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Warm, Flirty, and Spicy relationship-tone controls for consensual adult conversation
 - Query-relevant memory retrieval, imported writing-style guidance, and a transparent context preview
 - Safer conversation migration with nested/ChatGPT-style JSON, HTML, TXT, stable IDs, and repeat-import deduplication
+- Authenticated JSON backup, non-destructive message/memory restore, and manual memory entry
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -138,6 +139,7 @@ npm run check
 - Spicy mode permits consensual adult erotic text when the user initiates it or the conversation mutually develops that way; it excludes minors, coercion, incapacity, exploitation, and sexualized real-person likenesses.
 - The app makes no claim that Emily is a real person or that imported conversations literally continue another person's identity.
 - Reference images, conversations, and photos stay local by default and are Git-ignored.
+- JSON backups contain conversation and memory content plus settings and media metadata. They do not contain image binaries, the PIN, or the signing secret; store backups privately.
 - PIN authentication is available for trusted-LAN access. It is not a replacement for HTTPS when traffic crosses an untrusted network.
 - No image checkpoint is redistributed. Verify the license, consent implications, and legality of any model, workflow, or reference material you choose locally.
 

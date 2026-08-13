@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import multer from "multer";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rename } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { JsonStore } from "./store/json-store.js";
@@ -15,6 +15,7 @@ import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import { parseCookies, PinAuth } from "./services/auth.js";
 import { rankMemories, styleGuidance } from "./services/conversation-context.js";
+import { createBackup, mergeBackup, parseBackup } from "./services/backup.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -107,13 +108,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.7.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "4.8.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.7.0" },
+    app: { ok: true, version: "4.8.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -242,6 +243,39 @@ app.post("/api/imports", upload.single("conversation"), async (req, res, next) =
 app.delete("/api/memories/:id", async (req, res) => {
   await store.update((state) => { state.memories = state.memories.filter((x) => x.id !== req.params.id); });
   res.status(204).end();
+});
+
+const manualMemorySchema = z.object({ text: z.string().trim().min(3).max(1000), tags: z.array(z.string().trim().min(1).max(50)).max(10).default([]) });
+app.post("/api/memories", async (req, res, next) => {
+  try {
+    const input = manualMemorySchema.parse(req.body);
+    const memory = { id: crypto.randomUUID(), text: input.text, source: "manual" as const, confidence: 1, tags: input.tags, createdAt: new Date().toISOString() };
+    await store.update((state) => { state.memories.push(memory); });
+    res.status(201).json(memory);
+  } catch (error) { next(error); }
+});
+
+app.get("/api/backups/export", async (_req, res) => {
+  const backup = createBackup(await store.read(), "4.8.0");
+  const date = new Date().toISOString().slice(0, 10);
+  res.setHeader("content-type", "application/json; charset=utf-8");
+  res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);
+  res.send(JSON.stringify(backup, null, 2));
+});
+
+app.post("/api/backups/restore", upload.single("backup"), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Attach an Emily JSON backup." });
+    const backup = parseBackup(await readFile(req.file.path, "utf8"));
+    await unlink(req.file.path).catch(() => undefined);
+    let report!: ReturnType<typeof mergeBackup>["report"];
+    await store.update((state) => {
+      const merged = mergeBackup(state, backup);
+      Object.assign(state, merged.state);
+      report = merged.report;
+    });
+    res.json({ sourceVersion: backup.appVersion, exportedAt: backup.exportedAt, ...report });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/context-preview", async (req, res, next) => {

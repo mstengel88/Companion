@@ -59,6 +59,7 @@
       <section id="memory" class="view">
         <header><div><small>REVIEWABLE &amp; LOCAL</small><h2>Memory</h2></div></header>
         <div id="style" class="panel"></div>
+        <form id="manual-memory-form" class="panel"><label>Add a memory <input name="text" placeholder="I prefer mountain trips in February" required /></label><label>Tags, comma separated <input name="tags" placeholder="travel, winter" /></label><button>Remember this</button></form>
         <form id="context-form" class="panel"><label>Preview what Emily would recall <input name="query" placeholder="Ask about snowboarding, food, work…" required /></label><button>Preview context</button></form>
         <div id="context-result"></div><div id="memory-list" class="cards"></div>
       </section>
@@ -69,6 +70,7 @@
         <div class="panel"><h3>Proactive check-ins</h3><p>Optional local check-ins respect your quiet hours and never run more often than the interval below.</p><form id="proactive-form" class="grid-form"><label><input type="checkbox" name="enabled" /> Enable proactive messages</label><label>Minimum interval (minutes)<input type="number" name="minimumIntervalMinutes" min="30" max="10080" required /></label><label>Quiet hours start (0–23)<input type="number" name="quietHoursStart" min="0" max="23" required /></label><label>Quiet hours end (0–23)<input type="number" name="quietHoursEnd" min="0" max="23" required /></label><button class="wide">Save check-in settings</button></form><button id="notifications">Enable browser notifications</button></div>
         <div class="panel"><h3>Emily reference images</h3><p>Add one or two canonical images. They stay local and are hashed for identity tracking.</p><form id="reference-form"><input type="file" name="references" accept="image/png,image/jpeg,image/webp" multiple required /><button>Upload references</button></form><div id="reference-list"></div></div>
         <div class="panel"><h3>Conversation import</h3><p>JSON, ChatGPT-style JSON, HTML transcripts, and labeled TXT are supported. Originals are archived locally, and repeated imports skip duplicates.</p><form id="import-form"><input type="file" name="conversation" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain" required /><button>Import</button></form><pre id="import-result"></pre></div>
+        <div class="panel"><h3>Backup and restore</h3><p>Download conversations, memories, settings, and photo/reference metadata. Restore merges messages and memories without deleting current data; image binaries stay on this host.</p><a class="button-link" href="/api/backups/export" download>Download backup</a><form id="restore-form"><input type="file" name="backup" accept=".json,application/json" required /><button>Merge backup</button></form><pre id="restore-result"></pre></div>
         <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div><button id="diagnostics">Run diagnostics</button><pre id="diagnostic-result"></pre></div>
       </section>
     </main>
