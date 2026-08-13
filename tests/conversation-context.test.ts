@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { rankMemories, styleGuidance } from "../src/services/conversation-context.js";
-import type { Memory } from "../src/types/domain.js";
+import { buildConversationWindow, rankMemories, styleGuidance } from "../src/services/conversation-context.js";
+import type { Memory, Message } from "../src/types/domain.js";
 
 const memories: Memory[] = [
   { id: "1", text: "I love snowboarding in Colorado", source: "chat", confidence: 0.8, tags: ["travel"], createdAt: "2026-08-01T00:00:00Z" },
@@ -27,4 +27,29 @@ test("style guidance translates extracted metrics", () => {
   assert.match(guidance, /emoji occasionally/);
   assert.match(guidance, /question frequently/);
   assert.match(guidance, /hey you/);
+});
+
+test("conversation window keeps the newest bounded messages in order", () => {
+  const history: Message[] = Array.from({ length: 24 }, (_, index) => ({
+    id: String(index), role: index % 2 ? "assistant" : "user", content: `message ${index}`, createdAt: new Date().toISOString()
+  }));
+  const window = buildConversationWindow(history, 6, 10_000);
+  assert.equal(window.messages.length, 6);
+  assert.equal(window.messages[0]?.content, "message 18");
+  assert.equal(window.messages[5]?.content, "message 23");
+  assert.equal(window.omittedMessages, 18);
+  assert.match(window.continuity, /18 messages omitted/);
+  assert.match(window.continuity, /message 17/);
+});
+
+test("conversation window respects its character budget", () => {
+  const history: Message[] = [
+    { id: "1", role: "user", content: "a".repeat(80), createdAt: new Date().toISOString() },
+    { id: "2", role: "assistant", content: "b".repeat(80), createdAt: new Date().toISOString() },
+    { id: "3", role: "user", content: "recent", createdAt: new Date().toISOString() }
+  ];
+  const window = buildConversationWindow(history, 16, 100);
+  assert.deepEqual(window.messages.map((message) => message.content), ["b".repeat(80), "recent"]);
+  assert.equal(window.includedCharacters, 86);
+  assert.equal(window.omittedMessages, 1);
 });

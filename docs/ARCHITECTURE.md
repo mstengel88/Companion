@@ -19,6 +19,8 @@ Queued ComfyUI jobs are reconciled through its history and view endpoints. The f
 
 The proactive scheduler is disabled by default. When enabled, it checks once per minute, respects server-local quiet hours and the configured minimum interval, and generates through the same serialized inference coordinator. Browsers poll for new local messages and may show notifications only after the user grants permission.
 
+Chat inference sends at most the newest 16 messages and approximately 12,000 history characters to Ollama. When earlier messages are omitted, the system context includes short excerpts from the last four omitted turns while durable user facts continue through ranked memory retrieval. This keeps latency and context use bounded without silently pretending the full transcript is active.
+
 The frontend includes a web app manifest, a maskable vector icon, iOS standalone metadata, and a network-first service worker for the static application shell. Browsers require a secure context for service workers outside localhost, so offline shell caching activates when the app is later served through HTTPS; ordinary trusted-LAN access continues to work over HTTP.
 
 Optional PIN mode protects every API and stored photo route while leaving only the static unlock shell public. Successful logins receive an HttpOnly, SameSite=Strict, HMAC-signed session cookie. Five failed attempts from one address trigger a five-minute in-memory lockout. PIN mode still requires HTTPS before use on an untrusted network.

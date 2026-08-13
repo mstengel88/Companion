@@ -1,4 +1,4 @@
-import type { Memory, StyleProfile } from "../types/domain.js";
+import type { Memory, Message, StyleProfile } from "../types/domain.js";
 
 const stopWords = new Set(["about", "after", "again", "also", "and", "are", "but", "for", "from", "have", "how", "into", "just", "like", "that", "the", "their", "them", "then", "there", "they", "this", "was", "what", "when", "where", "which", "who", "will", "with", "would", "you", "your"]);
 
@@ -7,6 +7,42 @@ function tokens(text: string) {
 }
 
 export interface RankedMemory { memory: Memory; score: number; matchedTerms: string[]; }
+
+export interface ConversationWindow {
+  messages: Array<Pick<Message, "role" | "content">>;
+  totalMessages: number;
+  omittedMessages: number;
+  includedCharacters: number;
+  continuity: string;
+}
+
+function compactExcerpt(text: string, limit = 220) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length <= limit ? clean : `${clean.slice(0, limit - 1).trimEnd()}…`;
+}
+
+export function buildConversationWindow(history: Message[], maxMessages = 16, maxCharacters = 12_000): ConversationWindow {
+  const eligible = history.filter((message) => message.role === "user" || message.role === "assistant");
+  const selected: Message[] = [];
+  let characters = 0;
+  for (let index = eligible.length - 1; index >= 0 && selected.length < maxMessages; index--) {
+    const message = eligible[index]!;
+    if (selected.length && characters + message.content.length > maxCharacters) break;
+    selected.unshift(message);
+    characters += message.content.length;
+  }
+  const omitted = eligible.slice(0, eligible.length - selected.length);
+  const continuity = omitted.length
+    ? `Earlier conversation (${omitted.length} messages omitted from the live context), latest excerpts:\n${omitted.slice(-4).map((message) => `${message.role === "user" ? "User" : "Emily"}: ${compactExcerpt(message.content)}`).join("\n")}`
+    : "No earlier conversation was omitted from the live context.";
+  return {
+    messages: selected.map(({ role, content }) => ({ role, content })),
+    totalMessages: eligible.length,
+    omittedMessages: omitted.length,
+    includedCharacters: characters,
+    continuity
+  };
+}
 
 export function rankMemories(memories: Memory[], query: string, limit = 8): RankedMemory[] {
   const queryTokens = tokens(query);

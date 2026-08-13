@@ -14,7 +14,7 @@ import { ImageService } from "./services/comfyui.js";
 import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import { parseCookies, PinAuth } from "./services/auth.js";
-import { rankMemories, styleGuidance } from "./services/conversation-context.js";
+import { buildConversationWindow, rankMemories, styleGuidance } from "./services/conversation-context.js";
 import { createBackup, mergeBackup, parseBackup } from "./services/backup.js";
 import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference } from "./services/data-controls.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
@@ -110,13 +110,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "5.1.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "5.2.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "5.1.0" },
+    app: { ok: true, version: "5.2.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -308,7 +308,7 @@ app.post("/api/memories", async (req, res, next) => {
 });
 
 app.get("/api/backups/export", async (_req, res) => {
-  const backup = createBackup(await store.read(), "5.1.0");
+  const backup = createBackup(await store.read(), "5.2.0");
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);
@@ -334,11 +334,20 @@ app.get("/api/context-preview", async (req, res, next) => {
   try {
     const query = z.string().trim().min(1).max(1000).parse(req.query.query);
     const state = await store.read();
+    const conversation = buildConversationWindow(state.messages);
     res.json({
       query,
       memories: rankMemories(state.memories, query).map(({ memory, score, matchedTerms }) => ({ memory, score, matchedTerms })),
       styleGuidance: styleGuidance(state.style),
-      relationship: state.relationship
+      relationship: state.relationship,
+      conversation: {
+        totalMessages: conversation.totalMessages,
+        includedMessages: conversation.messages.length,
+        omittedMessages: conversation.omittedMessages,
+        includedCharacters: conversation.includedCharacters,
+        maximumMessages: 16,
+        maximumCharacters: 12_000
+      }
     });
   } catch (error) { next(error); }
 });
@@ -386,7 +395,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
-app.listen(port, host, () => console.log(`Emily v5.1 is ready at http://${host}:${port}`));
+app.listen(port, host, () => console.log(`Emily v5.2 is ready at http://${host}:${port}`));
 
 let proactiveRunning = false;
 async function runProactiveTick() {
