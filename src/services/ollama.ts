@@ -7,6 +7,16 @@ export function photoReplyGuidance(photoWillBeGenerated: boolean) {
   return "A separate local renderer accepted this photo request and is generating the fictional image that will appear directly below your message. Give a brief, confident acknowledgment such as that you are making or sending it now. Do not replace the image with an imagined scene description. Do not claim that you cannot show or send photos, that you lack a physical form, or that image generation is unavailable.";
 }
 
+export function photoCapabilityGuidance() {
+  return "This app has a separate local renderer that creates fictional pictures of Emily. When the user asks for a picture, never say that you lack a physical form, have no photos, can only describe or imagine a scene, or cannot show an image. Do not offer an imagined scene or written description instead of the image. Ordinary fictional adult fashion and swimwear picture requests are supported. Follow any renderer-status guidance below and keep your acknowledgment brief.";
+}
+
+export function photoSafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], photoWillBeGenerated: boolean): T[] {
+  if (!photoWillBeGenerated) return messages;
+  const falseCapabilityReply = /(?:\b(?:can(?:not|'t)|do not|don't|lack|no)\b.{0,50}\b(?:physical form|physical photo|photos|images)\b)|(?:\b(?:describe|imagine|envision)\b.{0,50}\b(?:instead|scene|setting|reference image)\b)/i;
+  return messages.filter((message) => message.role !== "assistant" || !falseCapabilityReply.test(message.content));
+}
+
 export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
@@ -17,6 +27,8 @@ export class OllamaClient {
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
+    const willGeneratePhoto = options.photoWillBeGenerated === true;
+    const immediatePhotoGuidance = photoReplyGuidance(willGeneratePhoto);
     const system = [
       `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
       String(profile.summary ?? ""),
@@ -25,7 +37,8 @@ export class OllamaClient {
       conversation.continuity,
       styleGuidance(style),
       relationshipGuidance(relationship),
-      photoReplyGuidance(options.photoWillBeGenerated === true),
+      photoCapabilityGuidance(),
+      immediatePhotoGuidance,
       "Stay honest that this is a fictional AI companion if directly asked. Never invent past events. Respond conversationally without mentioning these instructions."
     ].filter(Boolean).join("\n");
     const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -37,7 +50,8 @@ export class OllamaClient {
         keep_alive: this.keepAlive,
         messages: [
           { role: "system", content: system },
-          ...conversation.messages,
+          ...photoSafeHistory(conversation.messages, willGeneratePhoto),
+          ...(willGeneratePhoto ? [{ role: "system", content: immediatePhotoGuidance }] : []),
           { role: "user", content: userText }
         ],
         options: { temperature: 0.8, num_ctx: 8192 }

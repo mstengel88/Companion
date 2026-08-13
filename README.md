@@ -1,10 +1,10 @@
-# Emily AI Companion v5.6
+# Emily AI Companion v5.6.1
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
-v5.6 connects browser chat to a local Ollama model and routes structured photo requests to either a mock provider or a user-supplied generic ComfyUI workflow. The code contains no explicit-content model, prompt pack, or workflow selection.
+v5.6.1 connects browser chat to a local Ollama model and routes structured photo requests to either a mock provider or a user-supplied generic ComfyUI workflow. The code contains no explicit-content model, prompt pack, or workflow selection.
 
-## Included in v5.6
+## Included in v5.6.1
 
 - Versioned Emily character and visual-identity profile
 - Two canonical local reference-image slots, upload UI, file hashes, and metadata
@@ -34,6 +34,7 @@ v5.6 connects browser chat to a local Ollama model and routes structured photo r
 - Gallery actions to open or save completed images, reload prior settings for adjustment, and render non-destructive new-seed variations
 - Renderer-aware chat replies with queued, completed, or failed photo status shown directly beneath Emily's message
 - Live ComfyUI running/waiting state, pending position, elapsed render time, and completion timestamps
+- Natural-language picture requests, direct-request cooldown bypass, and renderer-capability guidance that prevents false “no physical form” replies
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
