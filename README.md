@@ -1,4 +1,4 @@
-# Emily AI Companion v5.3
+# Emily AI Companion v5.4
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -31,6 +31,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Confirmed phone-friendly controls to clear a conversation, forget memories, remove imported style, and delete individual local photos or references
 - Bounded recent-chat context with compact older-message continuity excerpts and a transparent context-size preview
 - Phone photo controls for choosing an Emily reference, seeing live local-renderer status and progress, and retrying failed or legacy mock requests
+- Gallery actions to open or save completed images, reload prior settings for adjustment, and render non-destructive new-seed variations
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference, retryablePhoto } from "../src/services/data-controls.js";
+import { clearConversation, clearMemories, clearStyle, photoVariation, removePhoto, removeReference, retryablePhoto } from "../src/services/data-controls.js";
 import type { AppState } from "../src/types/domain.js";
 
 function state(): AppState {
@@ -56,4 +56,11 @@ test("only mock and failed photo requests can be retried", () => {
   assert.equal(retryablePhoto(current, "photo-1")?.request.scene, "snow");
   current.photos[0]!.status = "failed";
   assert.equal(retryablePhoto(current, "photo-1")?.id, "photo-1");
+});
+
+test("photo variations preserve the request while replacing the seed", () => {
+  const current = state();
+  current.photos[0]!.request = { scene: "snow", outfit: "winter layers", seed: 1, referenceSlot: "emily-reference-1" };
+  assert.deepEqual(photoVariation(current, "photo-1", 77), { scene: "snow", outfit: "winter layers", seed: 77, referenceSlot: "emily-reference-1" });
+  assert.equal(photoVariation(current, "missing", 77), undefined);
 });

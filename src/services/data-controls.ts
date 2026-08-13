@@ -40,3 +40,8 @@ export function retryablePhoto(state: AppState, id: string): PhotoRecord | undef
   const record = state.photos.find((photo) => photo.id === id);
   return record && (record.status === "failed" || record.status === "mock") ? record : undefined;
 }
+
+export function photoVariation(state: AppState, id: string, seed: number): PhotoRecord["request"] | undefined {
+  const record = state.photos.find((photo) => photo.id === id);
+  return record ? { ...record.request, seed } : undefined;
+}

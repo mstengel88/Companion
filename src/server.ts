@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import multer from "multer";
-import { createHash } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { mkdir, readFile, readdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import { parseCookies, PinAuth } from "./services/auth.js";
 import { buildConversationWindow, rankMemories, styleGuidance } from "./services/conversation-context.js";
 import { createBackup, mergeBackup, parseBackup } from "./services/backup.js";
-import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference, retryablePhoto } from "./services/data-controls.js";
+import { clearConversation, clearMemories, clearStyle, photoVariation, removePhoto, removeReference, retryablePhoto } from "./services/data-controls.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -110,13 +110,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "5.3.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "5.4.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "5.3.0" },
+    app: { ok: true, version: "5.4.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -192,6 +192,19 @@ app.post("/api/photos/:id/retry", async (req, res, next) => {
     const source = retryablePhoto(state, req.params.id);
     if (!source) return res.status(409).json({ error: "Only failed or mock photo requests can be retried." });
     const record = await generatePhoto(source.request);
+    await store.update((current) => { current.photos.push(record); });
+    res.status(202).json(record);
+  } catch (error) { next(error); }
+});
+
+const variationSchema = z.object({ seed: z.number().int().min(1).max(2_147_483_646).optional() });
+app.post("/api/photos/:id/variations", async (req, res, next) => {
+  try {
+    const input = variationSchema.parse(req.body ?? {});
+    const state = await store.read();
+    const request = photoVariation(state, req.params.id, input.seed ?? randomInt(1, 2_147_483_647));
+    if (!request) return res.status(404).json({ error: "Photo request not found." });
+    const record = await generatePhoto(request);
     await store.update((current) => { current.photos.push(record); });
     res.status(202).json(record);
   } catch (error) { next(error); }
@@ -319,7 +332,7 @@ app.post("/api/memories", async (req, res, next) => {
 });
 
 app.get("/api/backups/export", async (_req, res) => {
-  const backup = createBackup(await store.read(), "5.3.0");
+  const backup = createBackup(await store.read(), "5.4.0");
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);
@@ -406,7 +419,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
-app.listen(port, host, () => console.log(`Emily v5.3 is ready at http://${host}:${port}`));
+app.listen(port, host, () => console.log(`Emily v5.4 is ready at http://${host}:${port}`));
 
 let proactiveRunning = false;
 async function runProactiveTick() {
