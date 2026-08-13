@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
-Write-Host "Emily v4 Windows setup" -ForegroundColor Magenta
+Write-Host "Emily v5.6.1 Windows setup" -ForegroundColor Magenta
 if (-not $SkipSoftwareInstall) {
   if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     throw "Windows Package Manager (winget) is required, or rerun with -SkipSoftwareInstall after installing Node and Ollama manually."
@@ -20,7 +20,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "Node.js is n
 if ([int](node -p "process.versions.node.split('.')[0]") -lt 20) { throw "Node.js 20 or newer is required." }
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 
-npm install
+npm ci
 npm run build
 
 if (Get-Command ollama -ErrorAction SilentlyContinue) {

@@ -101,6 +101,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 The detailed, current-source deployment sequence is in [docs/WINDOWS-11-RTX-2080-SUPER.md](docs/WINDOWS-11-RTX-2080-SUPER.md).
+For a private Mac-to-Windows migration that preserves Emily's local state and media, follow [docs/WINDOWS-TRANSFER-CHECKLIST.md](docs/WINDOWS-TRANSFER-CHECKLIST.md).
 
 ## ComfyUI workflow slot
 
