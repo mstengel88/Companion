@@ -1,5 +1,6 @@
 let data;
 const knownMessageIds = new Set();
+let installPrompt;
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (x) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));
 function toast(text){ const el=$("#toast"); el.textContent=text; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2800); }
@@ -32,6 +33,9 @@ $("#health").addEventListener("click",async()=>{try{const h=await api("/api/heal
 $("#diagnostics").addEventListener("click",async()=>{try{const result=await api("/api/diagnostics");$("#diagnostic-result").textContent=JSON.stringify(result,null,2);toast(result.workflow.ok?"Workflow profile is ready":"Workflow profile needs attention");}catch(err){toast(err.message)}});
 $("#proactive-form").addEventListener("submit",async e=>{e.preventDefault();const form=e.target;const body={enabled:form.elements.enabled.checked,minimumIntervalMinutes:Number(form.elements.minimumIntervalMinutes.value),quietHoursStart:Number(form.elements.quietHoursStart.value),quietHoursEnd:Number(form.elements.quietHoursEnd.value)};try{const result=await api("/api/settings/proactive",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});data.state.proactive=result.proactive;data.state.lastProactiveAt=result.lastProactiveAt;render();toast("Check-in settings saved");}catch(err){toast(err.message)}});
 $("#notifications").addEventListener("click",async()=>{if(!("Notification" in window))return toast("This browser does not support notifications");const permission=await Notification.requestPermission();render();toast(permission==="granted"?"Browser notifications enabled":"Notifications were not enabled");});
+window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPrompt=event;$("#install-app").hidden=false;$("#install-help").textContent="Install Emily for a full-screen home-screen app.";});
+$("#install-app").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();const result=await installPrompt.userChoice;installPrompt=undefined;$("#install-app").hidden=true;toast(result.outcome==="accepted"?"Emily installed":"Installation dismissed");});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});
 load().catch(err=>toast(err.message));
 setInterval(async()=>{ try { const photos=await api("/api/photos"); if(data){ data.state.photos=photos; render(); } } catch {} },10000);
 setInterval(async()=>{try{if(!data)return;const latest=data.state.messages.at(-1)?.createdAt;const updates=await api(`/api/updates${latest?`?after=${encodeURIComponent(latest)}`:""}`);const fresh=updates.messages.filter(message=>!knownMessageIds.has(message.id));for(const message of fresh){knownMessageIds.add(message.id);data.state.messages.push(message);if(message.role==="assistant"&&"Notification" in window&&Notification.permission==="granted")new Notification("Emily",{body:message.content.slice(0,180)});}if(fresh.length)render();data.state.lastProactiveAt=updates.lastProactiveAt;}catch{}},15000);

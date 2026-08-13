@@ -1,4 +1,4 @@
-# Emily AI Companion v4.2
+# Emily AI Companion v4.3
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -19,6 +19,8 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Serialized inference and optional Ollama-to-ComfyUI GPU handoff for 8 GB cards
 - Runtime diagnostics for Ollama, loaded-model VRAM, ComfyUI, and workflow placeholders
 - Opt-in proactive check-ins with minimum intervals, quiet hours, and browser notifications
+- Installable phone-app metadata, home-screen icon, and an HTTPS-capable offline shell
+- Mac LAN start and status helpers
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -36,6 +38,14 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:3000`.
+
+To serve the app to a phone on the same trusted Wi-Fi network:
+
+```bash
+./scripts/start-mac-lan.sh
+```
+
+The script prints the current phone URL. Check a running host with `./scripts/status-mac-lan.sh`. On iPhone, open the phone URL in Safari, tap **Share**, then **Add to Home Screen**. Service-worker offline caching requires HTTPS on non-localhost addresses; the home-screen web app itself remains usable over trusted-LAN HTTP while the Mac host is online.
 
 To use local chat on the Mac, install [Ollama](https://ollama.com/download), then:
 
