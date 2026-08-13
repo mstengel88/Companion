@@ -1,4 +1,4 @@
-# Emily AI Companion v4.5
+# Emily AI Companion v4.6
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -23,6 +23,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Mac LAN start and status helpers
 - Optional PIN protection with signed 30-day sessions, login throttling, and a mobile unlock screen
 - Warm, Flirty, and Spicy relationship-tone controls for consensual adult conversation
+- Query-relevant memory retrieval, imported writing-style guidance, and a transparent context preview
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note

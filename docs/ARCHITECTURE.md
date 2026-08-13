@@ -25,6 +25,8 @@ Optional PIN mode protects every API and stored photo route while leaving only t
 
 Relationship tone is persisted independently from Emily's core identity. The system-prompt builder maps Warm, Flirty, and Spicy to explicit behavioral guidance. Spicy mode permits contextual consensual adult erotic text while retaining adult-only, consent, fictional-identity, and stop/change-direction boundaries.
 
+Conversation context ranks local memories using query-term overlap, stored confidence, and recency; matching memories outrank merely recent items. When no terms match, a bounded fallback still supplies continuity. Imported style metrics are translated into approximate length, emoji, question, and opener guidance rather than copied verbatim. The Memory screen exposes the same ranking through a context-preview endpoint for transparency.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

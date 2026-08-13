@@ -14,6 +14,7 @@ import { ImageService } from "./services/comfyui.js";
 import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import { parseCookies, PinAuth } from "./services/auth.js";
+import { rankMemories, styleGuidance } from "./services/conversation-context.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -106,13 +107,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.5.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "4.6.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.5.0" },
+    app: { ok: true, version: "4.6.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -132,7 +133,7 @@ app.post("/api/chat", async (req, res, next) => {
     const before = await store.read();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() };
     let reply: string;
-    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, before.relationship, text)); }
+    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, before.style, before.relationship, text)); }
     catch (error) {
       reply = `I’m here, but my local language model isn’t responding yet. Check Ollama in Settings. (${String(error).slice(0, 180)})`;
     }
@@ -224,6 +225,19 @@ app.delete("/api/memories/:id", async (req, res) => {
   res.status(204).end();
 });
 
+app.get("/api/context-preview", async (req, res, next) => {
+  try {
+    const query = z.string().trim().min(1).max(1000).parse(req.query.query);
+    const state = await store.read();
+    res.json({
+      query,
+      memories: rankMemories(state.memories, query).map(({ memory, score, matchedTerms }) => ({ memory, score, matchedTerms })),
+      styleGuidance: styleGuidance(state.style),
+      relationship: state.relationship
+    });
+  } catch (error) { next(error); }
+});
+
 const proactiveSchema = z.object({
   enabled: z.boolean(),
   minimumIntervalMinutes: z.number().int().min(30).max(10_080),
@@ -280,6 +294,7 @@ async function runProactiveTick() {
       character,
       state.messages,
       state.memories,
+      state.style,
       state.relationship,
       proactivePrompt(state.messages)
     ));

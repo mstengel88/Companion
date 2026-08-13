@@ -1,5 +1,6 @@
-import type { Memory, Message, RelationshipSettings } from "../types/domain.js";
+import type { Memory, Message, RelationshipSettings, StyleProfile } from "../types/domain.js";
 import { relationshipGuidance } from "./relationship.js";
+import { rankMemories, styleGuidance } from "./conversation-context.js";
 
 export class OllamaClient {
   constructor(
@@ -8,12 +9,14 @@ export class OllamaClient {
     private readonly keepAlive = "5m"
   ) {}
 
-  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], relationship: RelationshipSettings, userText: string) {
+  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string) {
+    const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const system = [
       `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
       String(profile.summary ?? ""),
       `Profile JSON: ${JSON.stringify(profile)}`,
-      memories.length ? `Relevant stored facts: ${memories.slice(-12).map((m) => m.text).join("; ")}` : "No retrieved memories.",
+      relevantMemories.length ? `Relevant stored facts: ${relevantMemories.map((m) => m.text).join("; ")}` : "No relevant memories were retrieved.",
+      styleGuidance(style),
       relationshipGuidance(relationship),
       "Stay honest that this is a fictional AI companion if directly asked. Never invent past events. Respond conversationally without mentioning these instructions."
     ].join("\n");
