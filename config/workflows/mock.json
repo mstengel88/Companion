@@ -1,0 +1,8 @@
+{
+  "id": "mock",
+  "name": "Mock photos (Mac development)",
+  "description": "Records photo requests without requiring a GPU or image model.",
+  "mode": "mock",
+  "placeholders": {},
+  "capabilities": { "referenceImage": true, "poseControl": true, "controlImage": true }
+}

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+data/imports/*
+!data/imports/.gitkeep
+data/photos/*
+!data/photos/.gitkeep
+data/references/*
+!data/references/README.md
+data/state.json
+config/workflows/local-*.json
+*.log

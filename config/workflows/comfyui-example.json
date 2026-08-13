@@ -1,0 +1,19 @@
+{
+  "id": "comfyui-example",
+  "name": "Generic ComfyUI slot",
+  "description": "Example profile. Export an API-format ComfyUI graph and set workflowFile to it.",
+  "mode": "comfyui",
+  "workflowFile": "config/workflows/local-workflow-api.json",
+  "outputNode": "save-image-node-id",
+  "placeholders": {
+    "prompt": "__COMPANION_PROMPT__",
+    "negative": "__COMPANION_NEGATIVE__",
+    "seed": "__COMPANION_SEED__",
+    "width": "__COMPANION_WIDTH__",
+    "height": "__COMPANION_HEIGHT__",
+    "referenceImage": "__COMPANION_REFERENCE_IMAGE__",
+    "poseImage": "__COMPANION_POSE_IMAGE__",
+    "controlStrength": "__COMPANION_CONTROL_STRENGTH__"
+  },
+  "capabilities": { "referenceImage": true, "poseControl": true, "controlImage": true }
+}

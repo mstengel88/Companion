@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#211629" />
+  <title>Emily · Local Companion</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="identity"><div class="avatar">E</div><div><h1>Emily</h1><span><i></i> local companion</span></div></div>
+      <nav>
+        <button class="active" data-view="chat">Chat</button>
+        <button data-view="photos">Photos</button>
+        <button data-view="memory">Memory</button>
+        <button data-view="settings">Settings</button>
+      </nav>
+      <p class="privacy">Everything stays on this computer unless you deliberately expose the server.</p>
+    </aside>
+    <main>
+      <section id="chat" class="view active">
+        <header><div><small>FICTIONAL ADULT CHARACTER · AGE 43</small><h2>Conversation</h2></div><button id="health" class="chip">Check services</button></header>
+        <div id="messages" class="messages"><div class="empty"><strong>Start a private conversation</strong><span>Emily is polite, adventurous, and a little shy—with a playful streak.</span></div></div>
+        <form id="chat-form" class="composer"><textarea id="chat-input" rows="1" placeholder="Message Emily…" required></textarea><button>Send</button></form>
+      </section>
+      <section id="photos" class="view">
+        <header><div><small>LOCAL LIBRARY</small><h2>Photos</h2></div></header>
+        <form id="photo-form" class="panel grid-form">
+          <label class="wide">Scene<textarea name="scene" required placeholder="Snowboard lodge after a day on the mountain"></textarea></label>
+          <label>Activity<input name="activity" placeholder="warming up by the fire" /></label>
+          <label>Outfit<input name="outfit" placeholder="winter layers" /></label>
+          <label>Pose<input name="pose" placeholder="relaxed seated pose" /></label>
+          <label>Camera<input name="camera" placeholder="casual phone photo" /></label>
+          <label>Pose/control image<input name="poseImage" placeholder="optional ComfyUI input filename" /></label>
+          <label>Control strength<input name="controlStrength" type="number" min="0" max="2" step="0.05" value="0.75" /></label>
+          <button class="wide">Queue photo</button>
+        </form>
+        <div id="photo-list" class="cards"></div>
+      </section>
+      <section id="memory" class="view">
+        <header><div><small>REVIEWABLE &amp; LOCAL</small><h2>Memory</h2></div></header>
+        <div id="style" class="panel"></div><div id="memory-list" class="cards"></div>
+      </section>
+      <section id="settings" class="view">
+        <header><div><small>INTEGRATIONS</small><h2>Settings</h2></div></header>
+        <div class="panel"><h3>Emily reference images</h3><p>Add one or two canonical images. They stay local and are hashed for identity tracking.</p><form id="reference-form"><input type="file" name="references" accept="image/png,image/jpeg,image/webp" multiple required /><button>Upload references</button></form><div id="reference-list"></div></div>
+        <div class="panel"><h3>Conversation import</h3><p>Generic JSON and labeled TXT are supported. The original export is retained so a source-specific adapter can be added later.</p><form id="import-form"><input type="file" name="conversation" accept=".json,.txt,application/json,text/plain" required /><button>Import</button></form><pre id="import-result"></pre></div>
+        <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div></div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

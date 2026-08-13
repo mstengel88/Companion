@@ -119,4 +119,3 @@ npm run check
 - No image checkpoint is redistributed. Verify the license, consent implications, and legality of any model, workflow, or reference material you choose locally.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for extension points.
-# Companion
