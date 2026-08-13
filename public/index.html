@@ -38,7 +38,7 @@
     </aside>
     <main>
       <section id="chat" class="view active">
-        <header><div><small>FICTIONAL ADULT CHARACTER · AGE 43</small><h2>Conversation</h2></div><button id="health" class="chip">Check services</button></header>
+        <header><div><small>FICTIONAL ADULT CHARACTER · AGE 43</small><h2>Conversation</h2></div><div class="header-actions"><button id="new-conversation" class="chip danger">Start fresh</button><button id="health" class="chip">Check services</button></div></header>
         <div id="messages" class="messages"><div class="empty"><strong>Start a private conversation</strong><span>Emily is polite, adventurous, and a little shy—with a playful streak.</span></div></div>
         <form id="chat-form" class="composer"><textarea id="chat-input" rows="1" placeholder="Message Emily…" required></textarea><button>Send</button></form>
       </section>
@@ -71,6 +71,7 @@
         <div class="panel"><h3>Emily reference images</h3><p>Add one or two canonical images. They stay local and are hashed for identity tracking.</p><form id="reference-form"><input type="file" name="references" accept="image/png,image/jpeg,image/webp" multiple required /><button>Upload references</button></form><div id="reference-list"></div></div>
         <div class="panel"><h3>Conversation import</h3><p>JSON, ChatGPT-style JSON, HTML transcripts, and labeled TXT are supported. Originals are archived locally, and repeated imports skip duplicates.</p><form id="import-form"><input type="file" name="conversation" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain" required /><button>Import</button></form><pre id="import-result"></pre></div>
         <div class="panel"><h3>Backup and restore</h3><p>Download conversations, memories, settings, and photo/reference metadata. Restore merges messages and memories without deleting current data; image binaries stay on this host.</p><a class="button-link" href="/api/backups/export" download>Download backup</a><form id="restore-form"><input type="file" name="backup" accept=".json,application/json" required /><button>Merge backup</button></form><pre id="restore-result"></pre></div>
+        <div class="panel danger-zone"><h3>Privacy and data</h3><p>Remove selected local data without resetting Emily’s other settings. Download a backup first if you may want it later.</p><div class="data-actions"><button id="clear-conversation">Clear conversation</button><button id="clear-memories">Forget all memories</button><button id="clear-style">Remove imported style</button></div></div>
         <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div><button id="diagnostics">Run diagnostics</button><pre id="diagnostic-result"></pre></div>
       </section>
     </main>

@@ -16,6 +16,7 @@ import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import { parseCookies, PinAuth } from "./services/auth.js";
 import { rankMemories, styleGuidance } from "./services/conversation-context.js";
 import { createBackup, mergeBackup, parseBackup } from "./services/backup.js";
+import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference } from "./services/data-controls.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -109,13 +110,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "5.0.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "5.1.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "5.0.0" },
+    app: { ok: true, version: "5.1.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -185,6 +186,19 @@ app.get("/api/photos", async (_req, res) => {
   res.json(refreshed);
 });
 
+app.delete("/api/photos/:id", async (req, res) => {
+  let filename = "";
+  let found = false;
+  const updated = await store.update((state) => {
+    const record = removePhoto(state, req.params.id);
+    found = Boolean(record);
+    filename = record?.filename ?? "";
+  });
+  if (!found) return res.status(404).json({ error: "Photo not found." });
+  if (filename && path.basename(filename) === filename) await unlink(path.join(photosDir, filename)).catch(() => undefined);
+  res.json({ removed: true, photos: updated.photos.length });
+});
+
 app.post("/api/references", upload.array("references", 2), async (req, res, next) => {
   try {
     const files = (req.files as Express.Multer.File[] | undefined) ?? [];
@@ -204,6 +218,14 @@ app.post("/api/references", upload.array("references", 2), async (req, res, next
     await store.update((state) => { for (const record of records) { state.references = state.references.filter((x) => x.id !== record.id); state.references.push(record); } });
     res.status(201).json(records);
   } catch (error) { next(error); }
+});
+
+app.delete("/api/references/:id", async (req, res) => {
+  let filename = "";
+  const updated = await store.update((state) => { filename = removeReference(state, req.params.id)?.filename ?? ""; });
+  if (!filename) return res.status(404).json({ error: "Reference image not found." });
+  if (path.basename(filename) === filename) await unlink(path.join(refsDir, filename)).catch(() => undefined);
+  res.json({ removed: true, references: updated.references.length });
 });
 
 app.post("/api/imports", upload.single("conversation"), async (req, res, next) => {
@@ -246,6 +268,35 @@ app.delete("/api/memories/:id", async (req, res) => {
   res.status(204).end();
 });
 
+const confirmationSchema = z.object({ confirmation: z.literal("delete") });
+
+app.delete("/api/conversation", async (req, res, next) => {
+  try {
+    confirmationSchema.parse(req.body);
+    let removed = 0;
+    await store.update((state) => { removed = clearConversation(state); });
+    res.json({ removed });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/memories", async (req, res, next) => {
+  try {
+    confirmationSchema.parse(req.body);
+    let removed = 0;
+    await store.update((state) => { removed = clearMemories(state); });
+    res.json({ removed });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/style", async (req, res, next) => {
+  try {
+    confirmationSchema.parse(req.body);
+    let removed = false;
+    await store.update((state) => { removed = clearStyle(state); });
+    res.json({ removed });
+  } catch (error) { next(error); }
+});
+
 const manualMemorySchema = z.object({ text: z.string().trim().min(3).max(1000), tags: z.array(z.string().trim().min(1).max(50)).max(10).default([]) });
 app.post("/api/memories", async (req, res, next) => {
   try {
@@ -257,7 +308,7 @@ app.post("/api/memories", async (req, res, next) => {
 });
 
 app.get("/api/backups/export", async (_req, res) => {
-  const backup = createBackup(await store.read(), "5.0.0");
+  const backup = createBackup(await store.read(), "5.1.0");
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);
@@ -335,7 +386,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
-app.listen(port, host, () => console.log(`Emily v4 is ready at http://${host}:${port}`));
+app.listen(port, host, () => console.log(`Emily v5.1 is ready at http://${host}:${port}`));
 
 let proactiveRunning = false;
 async function runProactiveTick() {

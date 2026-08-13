@@ -23,6 +23,8 @@ The frontend includes a web app manifest, a maskable vector icon, iOS standalone
 
 Optional PIN mode protects every API and stored photo route while leaving only the static unlock shell public. Successful logins receive an HttpOnly, SameSite=Strict, HMAC-signed session cookie. Five failed attempts from one address trigger a five-minute in-memory lockout. PIN mode still requires HTTPS before use on an untrusted network.
 
+Authenticated data-control routes can clear conversation history, memories, or imported style independently. Photo and reference deletion removes both metadata and the corresponding local file after restricting the filename to a single safe path component. The browser requires a confirmation before every destructive action.
+
 Relationship tone is persisted independently from Emily's core identity. The system-prompt builder maps Warm, Flirty, and Spicy to explicit behavioral guidance. Spicy mode permits contextual consensual adult erotic text while retaining adult-only, consent, fictional-identity, and stop/change-direction boundaries.
 
 Conversation context ranks local memories using query-term overlap, stored confidence, and recency; matching memories outrank merely recent items. When no terms match, a bounded fallback still supplies continuity. Imported style metrics are translated into approximate length, emoji, question, and opener guidance rather than copied verbatim. The Memory screen exposes the same ranking through a context-preview endpoint for transparency.

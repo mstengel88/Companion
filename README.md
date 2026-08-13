@@ -1,4 +1,4 @@
-# Emily AI Companion v5.0
+# Emily AI Companion v5.1
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -28,6 +28,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Authenticated JSON backup, non-destructive message/memory restore, and manual memory entry
 - macOS login-service installation with automatic restart, health reporting, local logs, and recoverable uninstall
 - Private Tailscale HTTPS access for the phone away from home Wi-Fi, without router port forwarding
+- Confirmed phone-friendly controls to clear a conversation, forget memories, remove imported style, and delete individual local photos or references
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
