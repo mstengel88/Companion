@@ -35,3 +35,8 @@ export function removeReference(state: AppState, id: string): ReferenceImage | u
   state.references = state.references.filter((reference) => reference.id !== id);
   return record;
 }
+
+export function retryablePhoto(state: AppState, id: string): PhotoRecord | undefined {
+  const record = state.photos.find((photo) => photo.id === id);
+  return record && (record.status === "failed" || record.status === "mock") ? record : undefined;
+}

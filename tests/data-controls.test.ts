@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference } from "../src/services/data-controls.js";
+import { clearConversation, clearMemories, clearStyle, removePhoto, removeReference, retryablePhoto } from "../src/services/data-controls.js";
 import type { AppState } from "../src/types/domain.js";
 
 function state(): AppState {
@@ -47,4 +47,13 @@ test("removing a reference returns its local file metadata", () => {
   assert.equal(removeReference(current, "emily-reference-1")?.filename, "emily-reference-1.png");
   assert.deepEqual(current.references, []);
   assert.equal(removeReference(current, "missing"), undefined);
+});
+
+test("only mock and failed photo requests can be retried", () => {
+  const current = state();
+  assert.equal(retryablePhoto(current, "photo-1"), undefined);
+  current.photos[0]!.status = "mock";
+  assert.equal(retryablePhoto(current, "photo-1")?.request.scene, "snow");
+  current.photos[0]!.status = "failed";
+  assert.equal(retryablePhoto(current, "photo-1")?.id, "photo-1");
 });

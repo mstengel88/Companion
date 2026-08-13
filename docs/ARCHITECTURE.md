@@ -17,6 +17,8 @@ The app stores identity, scene intent, and image execution separately. Chat prod
 
 Queued ComfyUI jobs are reconciled through its history and view endpoints. The first image output is copied into `data/photos` and the local metadata record moves from `queued` to `complete`; the browser refreshes that state periodically.
 
+The Photos screen reports ComfyUI availability, defaults to the first uploaded Emily reference, displays active queued jobs, and permits failed or legacy mock records to be retried as new immutable jobs. Completed records are never silently overwritten; retries preserve the original request and append a new record for comparison.
+
 The proactive scheduler is disabled by default. When enabled, it checks once per minute, respects server-local quiet hours and the configured minimum interval, and generates through the same serialized inference coordinator. Browsers poll for new local messages and may show notifications only after the user grants permission.
 
 Chat inference sends at most the newest 16 messages and approximately 12,000 history characters to Ollama. When earlier messages are omitted, the system context includes short excerpts from the last four omitted turns while durable user facts continue through ranked memory retrieval. This keeps latency and context use bounded without silently pretending the full transcript is active.

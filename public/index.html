@@ -43,13 +43,14 @@
         <form id="chat-form" class="composer"><textarea id="chat-input" rows="1" placeholder="Message Emily…" required></textarea><button>Send</button></form>
       </section>
       <section id="photos" class="view">
-        <header><div><small>LOCAL LIBRARY</small><h2>Photos</h2></div></header>
+        <header><div><small>LOCAL LIBRARY</small><h2>Photos</h2></div><span id="renderer-status" class="chip">Checking renderer…</span></header>
         <form id="photo-form" class="panel grid-form">
           <label class="wide">Scene<textarea name="scene" required placeholder="Snowboard lodge after a day on the mountain"></textarea></label>
           <label>Activity<input name="activity" placeholder="warming up by the fire" /></label>
           <label>Outfit<input name="outfit" placeholder="winter layers" /></label>
           <label>Pose<input name="pose" placeholder="relaxed seated pose" /></label>
           <label>Camera<input name="camera" placeholder="casual phone photo" /></label>
+          <label>Emily reference<select id="photo-reference" name="referenceSlot"><option value="">No reference</option></select></label>
           <label>Pose/control image<input name="poseImage" placeholder="optional ComfyUI input filename" /></label>
           <label>Control strength<input name="controlStrength" type="number" min="0" max="2" step="0.05" value="0.75" /></label>
           <button class="wide">Queue photo</button>
