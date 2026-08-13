@@ -1,4 +1,4 @@
-# Emily AI Companion v4.3
+# Emily AI Companion v4.4
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -21,6 +21,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Opt-in proactive check-ins with minimum intervals, quiet hours, and browser notifications
 - Installable phone-app metadata, home-screen icon, and an HTTPS-capable offline shell
 - Mac LAN start and status helpers
+- Optional PIN protection with signed 30-day sessions, login throttling, and a mobile unlock screen
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -118,6 +119,9 @@ Copy `.env.example` to `.env`. Notable values:
 - `GPU_HANDOFF=auto`: unload the Ollama model before a real ComfyUI job; use `off` only when the models fit together.
 - `PHOTO_ROUTING=auto`: route direct/contextual photo requests from chat.
 - `AUTO_PHOTO_COOLDOWN_MINUTES=30`: avoid repeated automatic queues.
+- `AUTH_MODE=off`: set to `pin` when serving beyond localhost.
+- `APP_PIN`: local unlock PIN; use at least four characters.
+- `AUTH_SECRET`: random secret of at least 32 characters used to sign session cookies. Never commit the real value.
 
 ## Validate
 
@@ -130,7 +134,7 @@ npm run check
 - Emily is always represented as a fictional adult, age 43.
 - The app makes no claim that Emily is a real person or that imported conversations literally continue another person's identity.
 - Reference images, conversations, and photos stay local by default and are Git-ignored.
-- Authentication is not included in this single-user LAN prototype. Do not bind to a public interface or expose it to the internet until authentication and TLS are added.
+- PIN authentication is available for trusted-LAN access. It is not a replacement for HTTPS when traffic crosses an untrusted network.
 - No image checkpoint is redistributed. Verify the license, consent implications, and legality of any model, workflow, or reference material you choose locally.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for extension points.

@@ -21,6 +21,8 @@ The proactive scheduler is disabled by default. When enabled, it checks once per
 
 The frontend includes a web app manifest, a maskable vector icon, iOS standalone metadata, and a network-first service worker for the static application shell. Browsers require a secure context for service workers outside localhost, so offline shell caching activates when the app is later served through HTTPS; ordinary trusted-LAN access continues to work over HTTP.
 
+Optional PIN mode protects every API and stored photo route while leaving only the static unlock shell public. Successful logins receive an HttpOnly, SameSite=Strict, HMAC-signed session cookie. Five failed attempts from one address trigger a five-minute in-memory lockout. PIN mode still requires HTTPS before use on an untrusted network.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

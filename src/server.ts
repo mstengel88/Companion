@@ -13,6 +13,7 @@ import { OllamaClient } from "./services/ollama.js";
 import { ImageService } from "./services/comfyui.js";
 import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
+import { parseCookies, PinAuth } from "./services/auth.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -31,6 +32,14 @@ const ollama = new OllamaClient(
 const images = new ImageService(process.env.COMFYUI_URL ?? "http://127.0.0.1:8188", root, refsDir, photosDir);
 const gpuHandoff = process.env.GPU_HANDOFF === "off" ? "off" : "auto";
 const inference = new InferenceCoordinator(ollama, gpuHandoff);
+const authMode = process.env.AUTH_MODE === "pin" ? "pin" : "off";
+const appPin = process.env.APP_PIN ?? "";
+const authSecret = process.env.AUTH_SECRET ?? "";
+if (authMode === "pin" && (appPin.length < 4 || authSecret.length < 32)) {
+  throw new Error("PIN authentication requires APP_PIN with at least 4 characters and AUTH_SECRET with at least 32 characters.");
+}
+const pinAuth = authMode === "pin" ? new PinAuth(appPin, authSecret) : null;
+const loginAttempts = new Map<string, { failures: number; lockedUntil: number }>();
 const upload = multer({ dest: path.join(dataDir, ".uploads"), limits: { fileSize: 50 * 1024 * 1024 } });
 
 await Promise.all([store.init(), mkdir(refsDir, { recursive: true }), mkdir(photosDir, { recursive: true }), mkdir(importsDir, { recursive: true })]);
@@ -50,8 +59,46 @@ async function selectedWorkflow() {
 const app = express();
 app.set("trust proxy", process.env.TRUST_PROXY === "true");
 app.use(express.json({ limit: "2mb" }));
-app.use("/photos", express.static(photosDir));
 app.use(express.static(path.join(root, "public")));
+
+function authenticated(req: express.Request) {
+  if (!pinAuth) return true;
+  return pinAuth.verifySession(parseCookies(req.headers.cookie).emily_session);
+}
+
+app.get("/api/auth/status", (req, res) => {
+  res.json({ required: Boolean(pinAuth), authenticated: authenticated(req) });
+});
+
+const loginSchema = z.object({ pin: z.string().min(1).max(128) });
+app.post("/api/auth/login", (req, res) => {
+  if (!pinAuth) return res.json({ authenticated: true });
+  const key = req.ip || req.socket.remoteAddress || "unknown";
+  const attempt = loginAttempts.get(key) ?? { failures: 0, lockedUntil: 0 };
+  if (attempt.lockedUntil > Date.now()) return res.status(429).json({ error: "Too many attempts. Try again in five minutes." });
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success || !pinAuth.verifyPin(parsed.data.pin)) {
+    attempt.failures += 1;
+    if (attempt.failures >= 5) { attempt.failures = 0; attempt.lockedUntil = Date.now() + 5 * 60_000; }
+    loginAttempts.set(key, attempt);
+    return res.status(401).json({ error: "Incorrect PIN." });
+  }
+  loginAttempts.delete(key);
+  const secure = req.secure ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `emily_session=${encodeURIComponent(pinAuth.issueSession())}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure}`);
+  res.json({ authenticated: true });
+});
+
+app.post("/api/auth/logout", (_req, res) => {
+  res.setHeader("Set-Cookie", "emily_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0");
+  res.status(204).end();
+});
+
+app.use(["/api", "/photos"], (req, res, next) => {
+  if (authenticated(req)) return next();
+  res.status(401).json({ error: "PIN required." });
+});
+app.use("/photos", express.static(photosDir));
 
 app.get("/api/bootstrap", async (_req, res) => {
   const state = await store.read();
@@ -59,13 +106,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.3.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status() });
+  res.json({ app: { ok: true, version: "4.4.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.3.0" },
+    app: { ok: true, version: "4.4.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
