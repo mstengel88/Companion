@@ -2,6 +2,20 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { PhotoRecord, PhotoRequest, WorkflowProfile } from "../types/domain.js";
 
+type QueueEntry = [number, string, ...unknown[]];
+export interface ComfyQueueSnapshot { queue_running?: QueueEntry[]; queue_pending?: QueueEntry[] }
+
+export function locateQueueJob(snapshot: ComfyQueueSnapshot, promptId: string) {
+  const running = snapshot.queue_running ?? [];
+  const pending = snapshot.queue_pending ?? [];
+  if (running.some((entry) => entry[1] === promptId)) {
+    return { queueState: "running" as const, queuePosition: 0, queueLength: pending.length };
+  }
+  const index = pending.findIndex((entry) => entry[1] === promptId);
+  if (index >= 0) return { queueState: "waiting" as const, queuePosition: index + 1, queueLength: pending.length };
+  return null;
+}
+
 function buildPrompt(request: PhotoRequest) {
   return [
     "Emily, fictional 43-year-old adult woman",
@@ -95,7 +109,15 @@ export class ImageService {
     }
   }
 
-  async refresh(record: PhotoRecord): Promise<PhotoRecord> {
+  async queueSnapshot(): Promise<ComfyQueueSnapshot | null> {
+    try {
+      const response = await fetch(`${this.comfyUrl}/queue`, { signal: AbortSignal.timeout(5_000) });
+      if (!response.ok) return null;
+      return await response.json() as ComfyQueueSnapshot;
+    } catch { return null; }
+  }
+
+  async refresh(record: PhotoRecord, queue: ComfyQueueSnapshot | null = null): Promise<PhotoRecord> {
     if (record.status !== "queued" || !record.comfyPromptId) return record;
     const response = await fetch(`${this.comfyUrl}/history/${encodeURIComponent(record.comfyPromptId)}`, {
       signal: AbortSignal.timeout(5_000)
@@ -105,17 +127,18 @@ export class ImageService {
     const job = history[record.comfyPromptId];
     const image = job?.outputs && Object.values(job.outputs).flatMap((output) => output.images ?? [])[0];
     if (!image) {
-      if (job?.status?.status_str === "error") return { ...record, status: "failed", error: "ComfyUI reported a workflow error." };
-      return record;
+      if (job?.status?.status_str === "error") return { ...record, status: "failed", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined, error: "ComfyUI reported a workflow error." };
+      const queueJob = queue ? locateQueueJob(queue, record.comfyPromptId) : null;
+      return queueJob ? { ...record, ...queueJob } : record;
     }
     const params = new URLSearchParams({ filename: image.filename, subfolder: image.subfolder ?? "", type: image.type ?? "output" });
     const fileResponse = await fetch(`${this.comfyUrl}/view?${params}`, { signal: AbortSignal.timeout(30_000) });
-    if (!fileResponse.ok) return { ...record, status: "failed", error: `Could not retrieve ComfyUI output (${fileResponse.status}).` };
+    if (!fileResponse.ok) return { ...record, status: "failed", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined, error: `Could not retrieve ComfyUI output (${fileResponse.status}).` };
     const sourceExt = path.extname(image.filename).toLowerCase();
     const ext = [".png", ".jpg", ".jpeg", ".webp"].includes(sourceExt) ? sourceExt : ".png";
     const filename = `${record.id}${ext}`;
     await writeFile(path.join(this.photosDir, filename), Buffer.from(await fileResponse.arrayBuffer()));
-    return { ...record, filename, status: "complete" };
+    return { ...record, filename, status: "complete", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined };
   }
 
   private async resolveReference(slot: string) {

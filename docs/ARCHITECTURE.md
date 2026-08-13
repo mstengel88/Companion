@@ -1,4 +1,4 @@
-# v5.5 architecture
+# v5.6 architecture
 
 ```text
 Browser UI
@@ -22,6 +22,8 @@ The Photos screen reports ComfyUI availability, defaults to the first uploaded E
 Gallery records can be opened or downloaded through the authenticated photo route. “Adjust” repopulates the request form locally without generating, while “Variation” submits an immutable copy with a new randomized seed; the source record and its file remain untouched.
 
 Photo routing is decided before Ollama generates Emily's reply. When a request is accepted, a narrow system-prompt hint tells Emily that the separate local renderer is handling it, and the assistant message is linked to the immutable photo record by `photoId`. The Chat screen resolves that link on every photo-status poll, so the same message progresses from a local rendering indicator to the completed image or a retryable failure notice.
+
+Each photo poll fetches the ComfyUI queue once, then reconciles every queued local record against its prompt ID. Records expose whether they are actively running or waiting, their one-based pending position, pending queue length, and eventual completion time. This queue metadata is generic ComfyUI state and does not depend on model names or workflow nodes.
 
 The proactive scheduler is disabled by default. When enabled, it checks once per minute, respects server-local quiet hours and the configured minimum interval, and generates through the same serialized inference coordinator. Browsers poll for new local messages and may show notifications only after the user grants permission.
 

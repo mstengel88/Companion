@@ -51,6 +51,10 @@ export interface PhotoRecord {
   prompt: string;
   request: PhotoRequest;
   comfyPromptId?: string;
+  queueState?: "waiting" | "running";
+  queuePosition?: number;
+  queueLength?: number;
+  completedAt?: string;
   error?: string;
 }
 
