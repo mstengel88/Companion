@@ -12,6 +12,7 @@ import { routePhotoRequest } from "./services/photo-router.js";
 import { OllamaClient } from "./services/ollama.js";
 import { ImageService } from "./services/comfyui.js";
 import { InferenceCoordinator } from "./services/inference-coordinator.js";
+import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
 import type { Message, PhotoRequest, ReferenceImage, WorkflowProfile } from "./types/domain.js";
 
 const root = process.cwd();
@@ -58,13 +59,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.1.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status() });
+  res.json({ app: { ok: true, version: "4.2.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status() });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.1.0" },
+    app: { ok: true, version: "4.2.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -176,6 +177,32 @@ app.delete("/api/memories/:id", async (req, res) => {
   res.status(204).end();
 });
 
+const proactiveSchema = z.object({
+  enabled: z.boolean(),
+  minimumIntervalMinutes: z.number().int().min(30).max(10_080),
+  quietHoursStart: z.number().int().min(0).max(23),
+  quietHoursEnd: z.number().int().min(0).max(23)
+});
+app.put("/api/settings/proactive", async (req, res, next) => {
+  try {
+    const settings = proactiveSchema.parse(req.body);
+    const updated = await store.update((state) => {
+      if (!state.proactive.enabled && settings.enabled) state.lastProactiveAt = new Date().toISOString();
+      state.proactive = settings;
+    });
+    res.json({ proactive: updated.proactive, lastProactiveAt: updated.lastProactiveAt });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/updates", async (req, res) => {
+  const state = await store.read();
+  const after = typeof req.query.after === "string" ? Date.parse(req.query.after) : Number.NaN;
+  const messages = Number.isNaN(after)
+    ? state.messages.slice(-50)
+    : state.messages.filter((message) => Date.parse(message.createdAt) > after);
+  res.json({ messages, lastProactiveAt: state.lastProactiveAt });
+});
+
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid request", details: error.flatten() });
   console.error(error);
@@ -185,3 +212,31 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
 app.listen(port, host, () => console.log(`Emily v4 is ready at http://${host}:${port}`));
+
+let proactiveRunning = false;
+async function runProactiveTick() {
+  if (proactiveRunning) return;
+  proactiveRunning = true;
+  try {
+    const state = await store.read();
+    if (!shouldSendProactive(state)) return;
+    const content = await inference.runChat(() => ollama.chat(
+      character,
+      state.messages,
+      state.memories,
+      proactivePrompt(state.messages)
+    ));
+    const message: Message = { id: crypto.randomUUID(), role: "assistant", content, createdAt: new Date().toISOString() };
+    await store.update((current) => {
+      // A manual chat may have arrived while the model was generating. Avoid an
+      // unsolicited message immediately after that newer activity.
+      if (!shouldSendProactive(current)) return;
+      current.messages.push(message);
+      current.lastProactiveAt = message.createdAt;
+    });
+  } catch (error) { console.error("Proactive check-in failed:", error); }
+  finally { proactiveRunning = false; }
+}
+
+const proactiveTimer = setInterval(runProactiveTick, 60_000);
+proactiveTimer.unref();

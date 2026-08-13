@@ -63,6 +63,13 @@ export interface ReferenceImage {
   createdAt: string;
 }
 
+export interface ProactiveSettings {
+  enabled: boolean;
+  minimumIntervalMinutes: number;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+}
+
 export interface AppState {
   messages: Message[];
   memories: Memory[];
@@ -70,6 +77,8 @@ export interface AppState {
   references: ReferenceImage[];
   style: StyleProfile | null;
   lastAutoPhotoAt: string | null;
+  proactive: ProactiveSettings;
+  lastProactiveAt: string | null;
 }
 
 export interface WorkflowProfile {

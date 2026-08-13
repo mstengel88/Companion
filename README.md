@@ -1,4 +1,4 @@
-# Emily AI Companion v4.1
+# Emily AI Companion v4.2
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -18,6 +18,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Windows 11 scripts and RTX 2080 Super deployment guidance
 - Serialized inference and optional Ollama-to-ComfyUI GPU handoff for 8 GB cards
 - Runtime diagnostics for Ollama, loaded-model VRAM, ComfyUI, and workflow placeholders
+- Opt-in proactive check-ins with minimum intervals, quiet hours, and browser notifications
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
