@@ -2,6 +2,11 @@ import type { Memory, Message, RelationshipSettings, StyleProfile } from "../typ
 import { relationshipGuidance } from "./relationship.js";
 import { buildConversationWindow, rankMemories, styleGuidance } from "./conversation-context.js";
 
+export function photoReplyGuidance(photoWillBeGenerated: boolean) {
+  if (!photoWillBeGenerated) return "";
+  return "A separate local renderer accepted this photo request and is generating the fictional image that will appear directly below your message. Give a brief, confident acknowledgment such as that you are making or sending it now. Do not replace the image with an imagined scene description. Do not claim that you cannot show or send photos, that you lack a physical form, or that image generation is unavailable.";
+}
+
 export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
@@ -9,7 +14,7 @@ export class OllamaClient {
     private readonly keepAlive = "5m"
   ) {}
 
-  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string) {
+  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
     const system = [
@@ -20,8 +25,9 @@ export class OllamaClient {
       conversation.continuity,
       styleGuidance(style),
       relationshipGuidance(relationship),
+      photoReplyGuidance(options.photoWillBeGenerated === true),
       "Stay honest that this is a fictional AI companion if directly asked. Never invent past events. Respond conversationally without mentioning these instructions."
-    ].join("\n");
+    ].filter(Boolean).join("\n");
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },

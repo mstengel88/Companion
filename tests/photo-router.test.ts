@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { routePhotoRequest } from "../src/services/photo-router.js";
+import { photoReplyGuidance } from "../src/services/ollama.js";
 
 test("routes an explicit photo request", () => {
   const result = routePhotoRequest("Will you send me a snowboarding photo?", { enabled: true, cooldownMinutes: 30 });
@@ -18,4 +19,15 @@ test("respects cooldown", () => {
   const now = new Date("2026-01-01T12:00:00Z");
   const result = routePhotoRequest("Send a photo", { enabled: true, cooldownMinutes: 30, lastPhotoAt: "2026-01-01T11:45:00Z", now });
   assert.equal(result.reason, "cooldown");
+});
+
+test("tells Emily when the local renderer accepted a chat photo request", () => {
+  const guidance = photoReplyGuidance(true);
+  assert.match(guidance, /local renderer accepted/i);
+  assert.match(guidance, /brief, confident acknowledgment/i);
+  assert.match(guidance, /do not claim/i);
+});
+
+test("adds no renderer claim to ordinary chat", () => {
+  assert.equal(photoReplyGuidance(false), "");
 });

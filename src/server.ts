@@ -110,13 +110,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "5.4.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "5.5.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "5.4.0" },
+    app: { ok: true, version: "5.5.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -135,18 +135,18 @@ app.post("/api/chat", async (req, res, next) => {
     const { message: text } = chatSchema.parse(req.body);
     const before = await store.read();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() };
-    let reply: string;
-    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, before.style, before.relationship, text)); }
-    catch (error) {
-      reply = `I’m here, but my local language model isn’t responding yet. Check Ollama in Settings. (${String(error).slice(0, 180)})`;
-    }
-    const assistantMessage: Message = { id: crypto.randomUUID(), role: "assistant", content: reply, createdAt: new Date().toISOString() };
-    const candidates = extractMemoryCandidates(text, "chat");
     const routing = routePhotoRequest(text, {
       enabled: (process.env.PHOTO_ROUTING ?? "auto") === "auto",
       lastPhotoAt: before.lastAutoPhotoAt,
       cooldownMinutes: Number(process.env.AUTO_PHOTO_COOLDOWN_MINUTES ?? 30)
     });
+    let reply: string;
+    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, before.style, before.relationship, text, { photoWillBeGenerated: routing.route })); }
+    catch (error) {
+      reply = `I’m here, but my local language model isn’t responding yet. Check Ollama in Settings. (${String(error).slice(0, 180)})`;
+    }
+    const assistantMessage: Message = { id: crypto.randomUUID(), role: "assistant", content: reply, createdAt: new Date().toISOString() };
+    const candidates = extractMemoryCandidates(text, "chat");
     let photo = null;
     if (routing.route && routing.request) {
       try { photo = await generatePhoto(routing.request); }
@@ -332,7 +332,7 @@ app.post("/api/memories", async (req, res, next) => {
 });
 
 app.get("/api/backups/export", async (_req, res) => {
-  const backup = createBackup(await store.read(), "5.4.0");
+  const backup = createBackup(await store.read(), "5.5.0");
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);
@@ -419,7 +419,7 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "127.0.0.1";
-app.listen(port, host, () => console.log(`Emily v5.4 is ready at http://${host}:${port}`));
+app.listen(port, host, () => console.log(`Emily v5.5 is ready at http://${host}:${port}`));
 
 let proactiveRunning = false;
 async function runProactiveTick() {

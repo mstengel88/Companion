@@ -1,4 +1,4 @@
-# v4 architecture
+# v5.5 architecture
 
 ```text
 Browser UI
@@ -20,6 +20,8 @@ Queued ComfyUI jobs are reconciled through its history and view endpoints. The f
 The Photos screen reports ComfyUI availability, defaults to the first uploaded Emily reference, displays active queued jobs, and permits failed or legacy mock records to be retried as new immutable jobs. Completed records are never silently overwritten; retries preserve the original request and append a new record for comparison.
 
 Gallery records can be opened or downloaded through the authenticated photo route. “Adjust” repopulates the request form locally without generating, while “Variation” submits an immutable copy with a new randomized seed; the source record and its file remain untouched.
+
+Photo routing is decided before Ollama generates Emily's reply. When a request is accepted, a narrow system-prompt hint tells Emily that the separate local renderer is handling it, and the assistant message is linked to the immutable photo record by `photoId`. The Chat screen resolves that link on every photo-status poll, so the same message progresses from a local rendering indicator to the completed image or a retryable failure notice.
 
 The proactive scheduler is disabled by default. When enabled, it checks once per minute, respects server-local quiet hours and the configured minimum interval, and generates through the same serialized inference coordinator. Browsers poll for new local messages and may show notifications only after the user grants permission.
 
