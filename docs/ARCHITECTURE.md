@@ -27,6 +27,8 @@ Relationship tone is persisted independently from Emily's core identity. The sys
 
 Conversation context ranks local memories using query-term overlap, stored confidence, and recency; matching memories outrank merely recent items. When no terms match, a bounded fallback still supplies continuity. Imported style metrics are translated into approximate length, emoji, question, and opener guidance rather than copied verbatim. The Memory screen exposes the same ranking through a context-preview endpoint for transparency.
 
+The import adapter recursively recognizes common message containers, including ChatGPT-style mappings and nested `content.parts`, plus role-tagged or labeled HTML and TXT transcripts. Imported message IDs are deterministic hashes of role, content, timestamp, and occurrence, so re-importing the same export skips duplicates. Every source file is archived before parsing, including unsupported formats.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

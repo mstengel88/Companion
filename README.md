@@ -1,4 +1,4 @@
-# Emily AI Companion v4.6
+# Emily AI Companion v4.7
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -24,6 +24,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Optional PIN protection with signed 30-day sessions, login throttling, and a mobile unlock screen
 - Warm, Flirty, and Spicy relationship-tone controls for consensual adult conversation
 - Query-relevant memory retrieval, imported writing-style guidance, and a transparent context preview
+- Safer conversation migration with nested/ChatGPT-style JSON, HTML, TXT, stable IDs, and repeat-import deduplication
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -108,7 +109,7 @@ The generic JSON adapter recognizes an array, or a `{ "messages": [] }` object, 
 }
 ```
 
-TXT accepts `Me: ...` and `Emily: ...` lines. Unknown formats are safely retained in `data/imports` and produce a warning instead of discarding the source.
+Nested JSON and ChatGPT-style `mapping → message → author/content.parts` exports are also recognized. HTML accepts role-tagged blocks such as `data-role="user"` / `data-role="emily"`, with labeled transcript fallback. TXT accepts `Me: ...` and `Emily: ...` lines. Unknown formats are safely retained in `data/imports` and produce a warning instead of discarding the source. Stable imported IDs prevent duplicate messages when the same export is loaded again.
 
 ## Configuration
 

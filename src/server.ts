@@ -107,13 +107,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.6.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "4.7.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.6.0" },
+    app: { ok: true, version: "4.7.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -206,17 +206,36 @@ app.post("/api/references", upload.array("references", 2), async (req, res, next
 
 app.post("/api/imports", upload.single("conversation"), async (req, res, next) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "Attach a JSON or TXT export." });
+    if (!req.file) return res.status(400).json({ error: "Attach a JSON, HTML, or TXT export." });
     const original = path.join(importsDir, `${Date.now()}-${path.basename(req.file.originalname).replace(/[^a-zA-Z0-9._-]/g, "_")}`);
     await rename(req.file.path, original);
     const raw = await readFile(original, "utf8");
     const result = importConversation(req.file.originalname, raw);
+    const before = await store.read();
+    const knownIds = new Set(before.messages.map((message) => message.id));
+    const newMessages = result.messages.filter((message) => !knownIds.has(message.id));
     const emilyMessages = result.messages.filter((m) => m.role === "assistant");
-    const userMessages = result.messages.filter((m) => m.role === "user");
+    const userMessages = newMessages.filter((m) => m.role === "user");
     const style = extractStyle(emilyMessages);
-    const memories = userMessages.flatMap((m) => extractMemoryCandidates(m.content, "import"));
-    await store.update((state) => { state.messages.push(...result.messages); state.style = style; state.memories.push(...memories); });
-    res.status(201).json({ ...result, messageCount: result.messages.length, messages: undefined, style, memoryCandidates: memories.length, savedOriginal: path.basename(original) });
+    const existingMemoryText = new Set(before.memories.map((memory) => memory.text.trim().toLowerCase()));
+    const memories = userMessages.flatMap((m) => extractMemoryCandidates(m.content, "import"))
+      .filter((memory) => !existingMemoryText.has(memory.text.trim().toLowerCase()));
+    await store.update((state) => {
+      state.messages.push(...newMessages);
+      if (emilyMessages.length) state.style = style;
+      state.memories.push(...memories);
+    });
+    res.status(201).json({
+      source: result.source,
+      adapter: result.adapter,
+      warnings: result.warnings,
+      parsedMessages: result.messages.length,
+      importedMessages: newMessages.length,
+      duplicatesSkipped: result.messages.length - newMessages.length,
+      style: emilyMessages.length ? style : before.style,
+      memoryCandidates: memories.length,
+      savedOriginal: path.basename(original)
+    });
   } catch (error) { next(error); }
 });
 
