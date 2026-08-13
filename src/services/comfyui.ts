@@ -10,8 +10,9 @@ function buildPrompt(request: PhotoRequest) {
   ].filter(Boolean).join(", ");
 }
 
-function replaceDeep(value: unknown, replacements: Record<string, string | number>): unknown {
+export function replaceDeep(value: unknown, replacements: Record<string, string | number>): unknown {
   if (typeof value === "string") {
+    if (Object.hasOwn(replacements, value)) return replacements[value];
     let output = value;
     for (const [key, replacement] of Object.entries(replacements)) output = output.replaceAll(key, String(replacement));
     return output;
