@@ -8,5 +8,6 @@ data/photos/*
 data/references/*
 !data/references/README.md
 data/state.json
+data/logs/
 config/workflows/local-*.json
 *.log

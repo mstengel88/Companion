@@ -108,13 +108,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.8.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "4.9.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.8.0" },
+    app: { ok: true, version: "4.9.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -256,7 +256,7 @@ app.post("/api/memories", async (req, res, next) => {
 });
 
 app.get("/api/backups/export", async (_req, res) => {
-  const backup = createBackup(await store.read(), "4.8.0");
+  const backup = createBackup(await store.read(), "4.9.0");
   const date = new Date().toISOString().slice(0, 10);
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("content-disposition", `attachment; filename="emily-backup-${date}.json"`);

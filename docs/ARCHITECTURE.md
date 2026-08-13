@@ -31,6 +31,8 @@ The import adapter recursively recognizes common message containers, including C
 
 Backup schema v1 exports the local state as authenticated JSON without credentials or binary media. Restore validates the schema and merges messages and memories by stable ID, preserving current settings and never deleting current data. Photo/reference metadata is reported but not restored without its corresponding files.
 
+On macOS, an optional per-user LaunchAgent starts the built application at login and restarts it after failures. Its definition uses absolute executable and working-directory paths, while secrets remain in the Git-ignored `.env`. Standard output and errors stay under `data/logs`; uninstall moves only the LaunchAgent definition to Trash.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

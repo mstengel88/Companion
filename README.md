@@ -1,4 +1,4 @@
-# Emily AI Companion v4.8
+# Emily AI Companion v4.9
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -26,6 +26,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Query-relevant memory retrieval, imported writing-style guidance, and a transparent context preview
 - Safer conversation migration with nested/ChatGPT-style JSON, HTML, TXT, stable IDs, and repeat-import deduplication
 - Authenticated JSON backup, non-destructive message/memory restore, and manual memory entry
+- macOS login-service installation with automatic restart, health reporting, local logs, and recoverable uninstall
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -51,6 +52,15 @@ To serve the app to a phone on the same trusted Wi-Fi network:
 ```
 
 The script prints the current phone URL. Check a running host with `./scripts/status-mac-lan.sh`. On iPhone, open the phone URL in Safari, tap **Share**, then **Add to Home Screen**. Service-worker offline caching requires HTTPS on non-localhost addresses; the home-screen web app itself remains usable over trusted-LAN HTTP while the Mac host is online.
+
+To keep Emily running after this terminal closes and restart her automatically when you log into the Mac:
+
+```bash
+./scripts/install-mac-service.sh
+./scripts/status-mac-lan.sh
+```
+
+Logs are written under `data/logs/`. To stop automatic startup, run `./scripts/uninstall-mac-service.sh`; it moves the service definition to Trash and leaves all project data untouched.
 
 To use local chat on the Mac, install [Ollama](https://ollama.com/download), then:
 
