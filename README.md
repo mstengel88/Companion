@@ -1,4 +1,4 @@
-# Emily AI Companion v4.9
+# Emily AI Companion v5.0
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -27,6 +27,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Safer conversation migration with nested/ChatGPT-style JSON, HTML, TXT, stable IDs, and repeat-import deduplication
 - Authenticated JSON backup, non-destructive message/memory restore, and manual memory entry
 - macOS login-service installation with automatic restart, health reporting, local logs, and recoverable uninstall
+- Private Tailscale HTTPS access for the phone away from home Wi-Fi, without router port forwarding
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -61,6 +62,17 @@ To keep Emily running after this terminal closes and restart her automatically w
 ```
 
 Logs are written under `data/logs/`. To stop automatic startup, run `./scripts/uninstall-mac-service.sh`; it moves the service definition to Trash and leaves all project data untouched.
+
+## Private phone access away from Wi-Fi
+
+Install and sign in to [Tailscale for macOS](https://tailscale.com/download/mac) and install Tailscale on the phone under the same account. Then run:
+
+```bash
+./scripts/setup-private-access.sh
+./scripts/status-private-access.sh
+```
+
+The setup script uses Tailscale Serve to provision a private HTTPS address that proxies only to `127.0.0.1:3000`. It does not enable Funnel and does not make Emily public. Keep PIN protection enabled. Disable only the HTTPS proxy with `./scripts/disable-private-access.sh`.
 
 To use local chat on the Mac, install [Ollama](https://ollama.com/download), then:
 
@@ -136,6 +148,7 @@ Copy `.env.example` to `.env`. Notable values:
 - `AUTH_MODE=off`: set to `pin` when serving beyond localhost.
 - `APP_PIN`: local unlock PIN; use at least four characters.
 - `AUTH_SECRET`: random secret of at least 32 characters used to sign session cookies. Never commit the real value.
+- `TRUST_PROXY=loopback`: use this only when a local proxy such as Tailscale Serve terminates HTTPS; it lets HTTPS sessions receive Secure cookies without trusting spoofed proxy headers from LAN devices.
 
 ## Validate
 

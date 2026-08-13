@@ -33,6 +33,8 @@ Backup schema v1 exports the local state as authenticated JSON without credentia
 
 On macOS, an optional per-user LaunchAgent starts the built application at login and restarts it after failures. Its definition uses absolute executable and working-directory paths, while secrets remain in the Git-ignored `.env`. Standard output and errors stay under `data/logs`; uninstall moves only the LaunchAgent definition to Trash.
 
+Optional remote access uses Tailscale Serve as a private tailnet-only HTTPS reverse proxy to `127.0.0.1:3000`; Tailscale Funnel is never enabled. `TRUST_PROXY=loopback` trusts forwarded HTTPS state only from a same-host proxy, allowing Secure session cookies on the `.ts.net` URL while direct LAN clients cannot spoof proxy identity. PIN authentication remains required independently of tailnet membership.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

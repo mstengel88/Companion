@@ -60,6 +60,8 @@ The reference filenames must be visible to ComfyUI's `LoadImage` node. The simpl
 
 Open `http://127.0.0.1:3000` on the Windows PC.
 
+For private phone access away from home, install Tailscale on Windows and the phone, sign both into the same tailnet, and use Tailscale Serve to proxy the local app. Do not use Funnel, which is public. Follow the current [official Serve documentation](https://tailscale.com/docs/features/tailscale-serve) because CLI syntax can change.
+
 ## RTX 2080 Super tuning
 
 - Start with one 7B quantized Ollama model and an image workflow designed for 8 GB VRAM.
