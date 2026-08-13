@@ -1,4 +1,5 @@
-import type { Memory, Message } from "../types/domain.js";
+import type { Memory, Message, RelationshipSettings } from "../types/domain.js";
+import { relationshipGuidance } from "./relationship.js";
 
 export class OllamaClient {
   constructor(
@@ -7,12 +8,13 @@ export class OllamaClient {
     private readonly keepAlive = "5m"
   ) {}
 
-  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], userText: string) {
+  async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], relationship: RelationshipSettings, userText: string) {
     const system = [
       `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
       String(profile.summary ?? ""),
       `Profile JSON: ${JSON.stringify(profile)}`,
       memories.length ? `Relevant stored facts: ${memories.slice(-12).map((m) => m.text).join("; ")}` : "No retrieved memories.",
+      relationshipGuidance(relationship),
       "Stay honest that this is a fictional AI companion if directly asked. Never invent past events. Respond conversationally without mentioning these instructions."
     ].join("\n");
     const response = await fetch(`${this.baseUrl}/api/chat`, {

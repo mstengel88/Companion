@@ -23,6 +23,7 @@ function render(){
   form.elements.minimumIntervalMinutes.value=proactive.minimumIntervalMinutes;
   form.elements.quietHoursStart.value=proactive.quietHoursStart;
   form.elements.quietHoursEnd.value=proactive.quietHoursEnd;
+  $("#relationship-form").elements.intensity.value=state.relationship.intensity;
   $("#notifications").textContent=("Notification" in window&&Notification.permission==="granted")?"Browser notifications enabled":"Enable browser notifications";
   $("#logout").hidden=!authState.required;
 }
@@ -37,6 +38,7 @@ $("#memory-list").addEventListener("click",async e=>{const id=e.target.dataset.m
 $("#health").addEventListener("click",async()=>{try{const h=await api("/api/health");toast(`App ✓ · Ollama ${h.ollama.ok?"✓":"offline"} · ComfyUI ${h.comfyui.ok?"✓":"offline"}`);}catch(err){toast(err.message)}});
 $("#diagnostics").addEventListener("click",async()=>{try{const result=await api("/api/diagnostics");$("#diagnostic-result").textContent=JSON.stringify(result,null,2);toast(result.workflow.ok?"Workflow profile is ready":"Workflow profile needs attention");}catch(err){toast(err.message)}});
 $("#proactive-form").addEventListener("submit",async e=>{e.preventDefault();const form=e.target;const body={enabled:form.elements.enabled.checked,minimumIntervalMinutes:Number(form.elements.minimumIntervalMinutes.value),quietHoursStart:Number(form.elements.quietHoursStart.value),quietHoursEnd:Number(form.elements.quietHoursEnd.value)};try{const result=await api("/api/settings/proactive",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)});data.state.proactive=result.proactive;data.state.lastProactiveAt=result.lastProactiveAt;render();toast("Check-in settings saved");}catch(err){toast(err.message)}});
+$("#relationship-form").addEventListener("submit",async event=>{event.preventDefault();const intensity=event.target.elements.intensity.value;try{const result=await api("/api/settings/relationship",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({intensity})});data.state.relationship=result.relationship;render();toast(`Relationship tone set to ${intensity}`);}catch(error){toast(error.message)}});
 $("#notifications").addEventListener("click",async()=>{if(!("Notification" in window))return toast("This browser does not support notifications");const permission=await Notification.requestPermission();render();toast(permission==="granted"?"Browser notifications enabled":"Notifications were not enabled");});
 window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();installPrompt=event;$("#install-app").hidden=false;$("#install-help").textContent="Install Emily for a full-screen home-screen app.";});
 $("#install-app").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();const result=await installPrompt.userChoice;installPrompt=undefined;$("#install-app").hidden=true;toast(result.outcome==="accepted"?"Emily installed":"Installation dismissed");});

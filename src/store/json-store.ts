@@ -5,7 +5,8 @@ import type { AppState } from "../types/domain.js";
 const emptyState: AppState = {
   messages: [], memories: [], photos: [], references: [], style: null, lastAutoPhotoAt: null,
   proactive: { enabled: false, minimumIntervalMinutes: 240, quietHoursStart: 22, quietHoursEnd: 8 },
-  lastProactiveAt: null
+  lastProactiveAt: null,
+  relationship: { intensity: "flirty" }
 };
 
 export class JsonStore {

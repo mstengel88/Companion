@@ -70,6 +70,10 @@ export interface ProactiveSettings {
   quietHoursEnd: number;
 }
 
+export interface RelationshipSettings {
+  intensity: "warm" | "flirty" | "spicy";
+}
+
 export interface AppState {
   messages: Message[];
   memories: Memory[];
@@ -79,6 +83,7 @@ export interface AppState {
   lastAutoPhotoAt: string | null;
   proactive: ProactiveSettings;
   lastProactiveAt: string | null;
+  relationship: RelationshipSettings;
 }
 
 export interface WorkflowProfile {

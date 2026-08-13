@@ -7,7 +7,7 @@ function state(overrides: Partial<AppState> = {}): AppState {
   return {
     messages: [], memories: [], photos: [], references: [], style: null, lastAutoPhotoAt: null,
     proactive: { enabled: true, minimumIntervalMinutes: 240, quietHoursStart: 22, quietHoursEnd: 8 },
-    lastProactiveAt: null, ...overrides
+    lastProactiveAt: null, relationship: { intensity: "flirty" }, ...overrides
   };
 }
 

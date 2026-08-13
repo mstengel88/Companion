@@ -106,13 +106,13 @@ app.get("/api/bootstrap", async (_req, res) => {
 });
 
 app.get("/api/health", async (_req, res) => {
-  res.json({ app: { ok: true, version: "4.4.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
+  res.json({ app: { ok: true, version: "4.5.0" }, ollama: await ollama.health(), comfyui: await images.health(), workflow: (await selectedWorkflow()).id, inference: inference.status(), authentication: { mode: authMode } });
 });
 
 app.get("/api/diagnostics", async (_req, res) => {
   const workflow = await selectedWorkflow();
   res.json({
-    app: { ok: true, version: "4.4.0" },
+    app: { ok: true, version: "4.5.0" },
     ollama: await ollama.health(),
     comfyui: await images.health(),
     workflow: await images.profileDiagnostics(workflow),
@@ -132,7 +132,7 @@ app.post("/api/chat", async (req, res, next) => {
     const before = await store.read();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() };
     let reply: string;
-    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, text)); }
+    try { reply = await inference.runChat(() => ollama.chat(character, before.messages, before.memories, before.relationship, text)); }
     catch (error) {
       reply = `I’m here, but my local language model isn’t responding yet. Check Ollama in Settings. (${String(error).slice(0, 180)})`;
     }
@@ -241,6 +241,15 @@ app.put("/api/settings/proactive", async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+const relationshipSchema = z.object({ intensity: z.enum(["warm", "flirty", "spicy"]) });
+app.put("/api/settings/relationship", async (req, res, next) => {
+  try {
+    const relationship = relationshipSchema.parse(req.body);
+    const updated = await store.update((state) => { state.relationship = relationship; });
+    res.json({ relationship: updated.relationship });
+  } catch (error) { next(error); }
+});
+
 app.get("/api/updates", async (req, res) => {
   const state = await store.read();
   const after = typeof req.query.after === "string" ? Date.parse(req.query.after) : Number.NaN;
@@ -271,6 +280,7 @@ async function runProactiveTick() {
       character,
       state.messages,
       state.memories,
+      state.relationship,
       proactivePrompt(state.messages)
     ));
     const message: Message = { id: crypto.randomUUID(), role: "assistant", content, createdAt: new Date().toISOString() };

@@ -23,6 +23,8 @@ The frontend includes a web app manifest, a maskable vector icon, iOS standalone
 
 Optional PIN mode protects every API and stored photo route while leaving only the static unlock shell public. Successful logins receive an HttpOnly, SameSite=Strict, HMAC-signed session cookie. Five failed attempts from one address trigger a five-minute in-memory lockout. PIN mode still requires HTTPS before use on an untrusted network.
 
+Relationship tone is persisted independently from Emily's core identity. The system-prompt builder maps Warm, Flirty, and Spicy to explicit behavioral guidance. Spicy mode permits contextual consensual adult erotic text while retaining adult-only, consent, fictional-identity, and stop/change-direction boundaries.
+
 The deterministic importer is intentionally small. `SemanticExtractor` in `src/services/extraction.ts` is the seam for a later local LLM or embedding-backed extraction pass. The original import is retained in `data/imports` even when the generic parser recognizes nothing.
 
 `data/state.json` is portable and simple for one user. Before supporting multiple simultaneous users, replace `JsonStore` with SQLite or Postgres and add authentication.

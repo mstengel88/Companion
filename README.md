@@ -1,4 +1,4 @@
-# Emily AI Companion v4.4
+# Emily AI Companion v4.5
 
 A private, local-first companion app built around **Emily**, a fictional 43-year-old adult character. Emily is polite and adventurous, initially shy, and has a playful wild streak. She likes snowboarding and wake surfing.
 
@@ -22,6 +22,7 @@ v4 connects a browser chat to a local Ollama model and routes structured photo r
 - Installable phone-app metadata, home-screen icon, and an HTTPS-capable offline shell
 - Mac LAN start and status helpers
 - Optional PIN protection with signed 30-day sessions, login throttling, and a mobile unlock screen
+- Warm, Flirty, and Spicy relationship-tone controls for consensual adult conversation
 - Responsive Chat, Photos, Memory, and Settings interface
 
 ## Important reference-image note
@@ -132,6 +133,7 @@ npm run check
 ## Privacy and scope
 
 - Emily is always represented as a fictional adult, age 43.
+- Spicy mode permits consensual adult erotic text when the user initiates it or the conversation mutually develops that way; it excludes minors, coercion, incapacity, exploitation, and sexualized real-person likenesses.
 - The app makes no claim that Emily is a real person or that imported conversations literally continue another person's identity.
 - Reference images, conversations, and photos stay local by default and are Git-ignored.
 - PIN authentication is available for trusted-LAN access. It is not a replacement for HTTPS when traffic crosses an untrusted network.
