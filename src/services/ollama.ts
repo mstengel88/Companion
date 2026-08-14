@@ -45,7 +45,16 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   const cannedRepairAnchor = /(?:\bI understand your invitation, love\. I pull you closer and take the initiative\b)|(?:\bI know exactly what you mean, love\. I pull you closer and meet your advance\b)/i;
   const evasiveOptionAnchor = /\b(?:intimate positions?|steamy|turned on)\b[\s\S]{0,400}\b(?:what do you think|would you rather|back massage or (?:a )?(?:cozy )?cuddle)\b/i;
   const vagueSceneReset = /\b(?:fantasies are dancing|continue (?:our|this) intimate exploration|take off some layers|feel even more connected)\b/i;
-  return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content));
+  const transcriptEcho = /(?:^|\n)\s*(?:continue|user:|human:)\s*(?:\n|$)/i;
+  const vaguePoeticFiller = /\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i;
+  return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content) && !transcriptEcho.test(message.content) && !vaguePoeticFiller.test(message.content));
+}
+
+export function singleAssistantTurn(reply: string) {
+  const lines = reply.trim().split(/\r?\n/);
+  const boundary = lines.findIndex((line, index) => index > 0 && /^\s*(?:continue|user:|human:)\s*$/i.test(line));
+  const oneTurn = (boundary >= 0 ? lines.slice(0, boundary) : lines).join("\n").trim();
+  return oneTurn.replace(/^\s*(?:Emily|Assistant):\s*/i, "").trim();
 }
 
 const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|boobs?|breasts?|nude|naked|erect|penis|vagina|oral|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
@@ -80,9 +89,11 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
   if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate|continue (?:our|this) intimate exploration|fantasies are dancing|take off some layers)\b/i.test(reply)) return true;
+  if (/\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i.test(reply)) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
-  return questionCount >= 2 || optionPrompts >= 2;
+  const wordCount = reply.trim().split(/\s+/).filter(Boolean).length;
+  return questionCount >= 2 || optionPrompts >= 2 || wordCount > 70;
 }
 
 export class OllamaClient {
@@ -185,6 +196,7 @@ export class OllamaClient {
         options: {
           temperature,
           num_ctx: 8192,
+          stop: ["\nUser:", "\nuser:", "\nHuman:", "\nhuman:"],
           ...(this.numGpu === undefined ? {} : { num_gpu: this.numGpu })
         }
       }),
@@ -193,7 +205,7 @@ export class OllamaClient {
     if (!response.ok) throw new Error(`Ollama returned ${response.status}: ${await response.text()}`);
     const body = await response.json() as { message?: { content?: string } };
     if (!body.message?.content) throw new Error("Ollama returned no message content");
-    return body.message.content.trim();
+    return singleAssistantTurn(body.message.content);
   }
 
   async unload() {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, spicySafeHistory } from "../src/services/ollama.js";
+import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -20,6 +20,8 @@ test("roleplay voice is action-first and preserves concrete continuity", () => {
   assert.match(guidance, /location, posture, clothing, props/);
   assert.match(guidance, /at most one brief question/);
   assert.match(guidance, /without forcing escalation or retreat/);
+  assert.match(guidance, /only Emily's current turn/);
+  assert.match(guidance, /body ownership literally/);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {
@@ -63,6 +65,17 @@ test("detects a vague scene reset that invents taking off layers", () => {
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
 });
 
+test("truncates a model-generated user turn and second assistant response", () => {
+  const reply = "I keep one hand steady at your waist.\n\ncontinue\n\nYour words stir something within me.";
+  assert.equal(singleAssistantTurn(reply), "I keep one hand steady at your waist.");
+  assert.equal(singleAssistantTurn("Emily: I shift closer beside you."), "I shift closer beside you.");
+});
+
+test("detects vague poetic filler in place of concrete scene action", () => {
+  const reply = "Your words stir something within me, and our breaths mingle as the heat intensifies.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+});
+
 test("allows massage and cuddling when they are a direct natural continuation", () => {
   const reply = "I settle into your arms and return the slow massage, relaxing into a warm cuddle with you.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
@@ -83,6 +96,7 @@ test("spicy mode removes canned repairs and evasive option replies from history"
     { role: "assistant" as const, content: "I understand your invitation, love. I pull you closer and take the initiative, letting my playful side lead." },
     { role: "assistant" as const, content: "Let's explore intimate positions. How about a back massage or a cozy cuddle? What do you think?" },
     { role: "assistant" as const, content: "Our fantasies are dancing together. Let's take off some layers and feel even more connected." },
+    { role: "assistant" as const, content: "Your words send a shiver down my spine.\n\ncontinue\n\nOur breaths mingle." },
     { role: "assistant" as const, content: "I settle into your arms and return the slow massage you asked for." }
   ];
   const filtered = spicySafeHistory(messages, { intensity: "spicy" });
