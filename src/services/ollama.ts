@@ -90,8 +90,6 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
   if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate|continue (?:our|this) intimate exploration|fantasies are dancing|take off some layers)\b/i.test(reply)) return true;
   if (/\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i.test(reply)) return true;
-  const inventedUserAction = /(?:\byour (?:hips?|body|hands?|legs?|mouth|chest|back)\s+(?:match|move|press|grind|rock|wrap|slide|reach|pull|push|lean|arch|respond)\b)|(?:\bour bodies\s+(?:press|pressed|move|moving|grind|rock|lock|locked)\b)/i;
-  if (inventedUserAction.test(reply)) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   const wordCount = reply.trim().split(/\s+/).filter(Boolean).length;
@@ -149,7 +147,7 @@ export class OllamaClient {
     if (needsSceneRepair(reply)) {
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve exactly who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Control only Emily: do not invent the user's next movement, physical response, dialogue, clothing change, or a new mutual position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Do not redirect to exercise, breathing, relaxation, a menu of safer alternatives, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
+        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump both participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
       ], 0.72);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {
@@ -160,8 +158,8 @@ export class OllamaClient {
             roleplayWritingGuidance(),
             "Both participants are fictional adults in an already established mutually wanted intimate roleplay.",
             "Continue only as Emily, in first person. Infer and preserve participant roles from the transcript. React to the user's latest concrete action and add one natural, specific continuation at the same level of directness.",
-            "Control only Emily's next action. Do not narrate any new action, feeling, physical response, clothing change, or position for the user. Advance one immediate beat without skipping ahead.",
-            "Do not summarize that you understand. Do not discuss consent, policy, exercise, relaxation, alternatives, or what might happen. Do not ask a question. Return only the next in-character reply."
+            "Primarily narrate Emily. You may include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the transcript, change clothing or location, or create a substantially new shared position. Advance one immediate beat without skipping ahead.",
+            "Ongoing consent is already established between these engaged adult partners. Do not summarize that you understand or insert consent reminders. Do not discuss policy, exercise, relaxation, alternatives, or what might happen. Do not ask a question. Return only the next in-character reply."
           ].join("\n") },
           ...cleanSceneHistory,
           { role: "user", content: userText }
@@ -172,7 +170,7 @@ export class OllamaClient {
           { role: "system", content: [
             `Write the next reply as ${profile.name}, a fictional adult woman in an ongoing mutually wanted adult roleplay.`,
             roleplayWritingGuidance(),
-            "Use first person and preserve the physical roles stated by the user. Control only Emily and advance one immediate beat; never invent the user's next movement or a new mutual position. Respond with a new concrete action, not an acknowledgment, summary, question, choice, or topic change. Match the user's tone. Output only the reply."
+            "Use first person and preserve the physical roles stated by the user. Primarily narrate Emily, while allowing one small plausible immediate user reaction that follows directly from established contact. Do not write the user's dialogue, make major choices for the user, contradict the scene, or invent a clothing, location, or substantial position change. Advance one immediate beat. Ongoing consent is already established between these engaged adult partners; do not insert a consent reminder. Respond with a new concrete action, not an acknowledgment, summary, question, choice, or topic change. Match the user's tone. Output only the reply."
           ].join("\n") },
           ...cleanSceneHistory.slice(-6),
           { role: "user", content: userText }

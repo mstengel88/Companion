@@ -22,7 +22,9 @@ test("roleplay voice is action-first and preserves concrete continuity", () => {
   assert.match(guidance, /without forcing escalation or retreat/);
   assert.match(guidance, /only Emily's current turn/);
   assert.match(guidance, /body ownership literally/);
-  assert.match(guidance, /Control only Emily's actions/);
+  assert.match(guidance, /collaborative narration/);
+  assert.match(guidance, /small, plausible immediate movement, sensation, or emotional reaction/);
+  assert.match(guidance, /Do not write the user's dialogue or make major decisions/);
   assert.match(guidance, /Advance by one immediate beat/);
 });
 
@@ -32,7 +34,11 @@ test("spicy mode is adult, consensual, and contextual", () => {
   assert.match(guidance, /fictional 43-year-old adult/);
   assert.match(guidance, /Never sexualize minors, coercion/);
   assert.match(guidance, /without becoming explicit in unrelated contexts/);
-  assert.match(guidance, /Consent carries forward/);
+  assert.match(guidance, /consent is the default and carries forward/);
+  assert.match(guidance, /engaged partners/);
+  assert.match(guidance, /ongoing mutual consent is the default/);
+  assert.match(guidance, /Do not insert repetitive consent reminders/);
+  assert.match(guidance, /stop, no, wait/);
   assert.match(guidance, /Do not invent reluctance/);
   assert.match(guidance, /enthusiastically reciprocate/);
   assert.match(guidance, /sexual euphemisms/);
@@ -78,8 +84,8 @@ test("detects vague poetic filler in place of concrete scene action", () => {
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
 });
 
-test("detects invented movement or a shared position for the user", () => {
-  assert.equal(isSpicySceneStyleDrift("Your hips match mine in rhythm as our bodies press together.", { intensity: "spicy" }, true), true);
+test("allows plausible collaborative narration of an immediate shared reaction", () => {
+  assert.equal(isSpicySceneStyleDrift("Your hips answer the small shift of mine as I keep one hand steady at your waist.", { intensity: "spicy" }, true), false);
   assert.equal(isSpicySceneStyleDrift("I keep my hand steady where you placed it and shift my weight beside you.", { intensity: "spicy" }, true), false);
 });
 
