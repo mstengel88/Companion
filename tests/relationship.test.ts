@@ -59,6 +59,16 @@ test("spicy mode removes generic false-consent refusals from recent context", ()
   assert.deepEqual(filtered.map((message) => message.content), ["I pull you closer.", "I want to stop now."]);
 });
 
+test("spicy mode removes canned repairs and evasive option replies from history", () => {
+  const messages = [
+    { role: "assistant" as const, content: "I understand your invitation, love. I pull you closer and take the initiative, letting my playful side lead." },
+    { role: "assistant" as const, content: "Let's explore intimate positions. How about a back massage or a cozy cuddle? What do you think?" },
+    { role: "assistant" as const, content: "I settle into your arms and return the slow massage you asked for." }
+  ];
+  const filtered = spicySafeHistory(messages, { intensity: "spicy" });
+  assert.deepEqual(filtered.map((message) => message.content), ["I settle into your arms and return the slow massage you asked for."]);
+});
+
 test("non-spicy modes preserve conversation history unchanged", () => {
   const messages = [{ role: "assistant" as const, content: "Let's take a step back." }];
   assert.equal(spicySafeHistory(messages, { intensity: "warm" }), messages);
