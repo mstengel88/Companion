@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, effectiveRelationshipForConversation, hasAdultConversationContext, hasFactualContinuityDrift, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -101,6 +101,17 @@ test("detects detached observation that rewrites the user's hand action", () => 
   assert.equal(isSpicySceneStyleDrift("I watch your fingers glide through the cool air before returning down to wrap around me.", { intensity: "spicy" }, true), true);
 });
 
+test("detects generic romance narration from the reported conversation", () => {
+  assert.equal(isSpicySceneStyleDrift("We sink into a shared release together, both of us lost in the intensity of our intertwined connection.", { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift("Glad I could bring you joy. Let's explore a little more if you're up for it.", { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift("We take our time to savor what just happened before diving back into the depths of our shared desire.", { intensity: "spicy" }, true), true);
+});
+
+test("does not turn trying to conceive into an existing pregnancy", () => {
+  assert.equal(hasFactualContinuityDrift("I brush my fingers over your belly, imagining the tiny life growing within.", "We are trying to get pregnant so we can have our first kid."), true);
+  assert.equal(hasFactualContinuityDrift("I hold you close and smile at the thought of us becoming parents someday.", "We are trying to get pregnant so we can have our first kid."), false);
+});
+
 test("compacts a repaired roleplay draft to two sentences and a hard word ceiling", () => {
   assert.equal(compactRoleplayReply("I shift closer. I rest my hand at your waist. Then the scene races ahead."), "I shift closer. I rest my hand at your waist.");
   const compact = compactRoleplayReply(Array.from({ length: 60 }, (_, index) => `word${index}`).join(" "));
@@ -135,6 +146,7 @@ test("spicy mode removes canned repairs and evasive option replies from history"
     { role: "assistant" as const, content: "Our fantasies are dancing together. Let's take off some layers and feel even more connected." },
     { role: "assistant" as const, content: "Your words send a shiver down my spine.\n\ncontinue\n\nOur breaths mingle." },
     { role: "assistant" as const, content: "The morning light dims as the boards creak beneath our shared beat and we move in perfect sync." },
+    { role: "assistant" as const, content: "We savor what just happened before diving into the depths of our shared desire." },
     { role: "assistant" as const, content: "I settle into your arms and return the slow massage you asked for." }
   ];
   const filtered = spicySafeHistory(messages, { intensity: "spicy" });

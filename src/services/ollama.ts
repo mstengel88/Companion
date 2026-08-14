@@ -47,7 +47,7 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   const vagueSceneReset = /\b(?:fantasies are dancing|continue (?:our|this) intimate exploration|take off some layers|feel even more connected)\b/i;
   const transcriptEcho = /(?:^|\n)\s*(?:continue|user:|human:)\s*(?:\n|$)/i;
   const vaguePoeticFiller = /\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i;
-  const scenerySubstitute = /\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined bodies|shared pleasure|playful adventure|basking in the afterglow)\b/i;
+  const scenerySubstitute = /\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|shared release|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined (?:bodies|connection)|shared (?:pleasure|desire)|playful adventure|basking in the afterglow|connection we share|savor what (?:just )?happened|depths? of our (?:shared )?desire|take things one step at a time|glad I could bring you joy|let'?s explore (?:a little )?more)\b/i;
   return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content) && !transcriptEcho.test(message.content) && !vaguePoeticFiller.test(message.content) && !scenerySubstitute.test(message.content));
 }
 
@@ -100,7 +100,7 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
   if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate|continue (?:our|this) intimate exploration|fantasies are dancing|take off some layers)\b/i.test(reply)) return true;
   if (/\b(?:your words (?:send|stir|are like fire)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle|heartbeats? sync(?:ing)?|world fades away|private universe|erotic dance|intoxicating curiosity|fervor and devotion|exploring every inch)\b/i.test(reply)) return true;
-  if (/\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined bodies|shared pleasure|playful adventure|basking in the afterglow|both of us (?:sinking|spent)|we (?:both )?(?:come crashing|move together))\b/i.test(reply)) return true;
+  if (/\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|shared release|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined (?:bodies|connection)|shared (?:pleasure|desire)|playful adventure|basking in the afterglow|connection we share|savor what (?:just )?happened|depths? of our (?:shared )?desire|take things one step at a time|glad I could bring you joy|let'?s explore (?:a little )?more|both of us (?:sinking|spent|lost)|we (?:both )?(?:come crashing|move together|sink into))\b/i.test(reply)) return true;
   if (/\bwatch (?:the way )?your (?:fingers|hands?)\b[\s\S]{0,140}\b(?:glide through (?:the )?(?:cool )?air|return(?:ing)? down|wrap around me)\b/i.test(reply)) return true;
   if (/\byour soft folds\b/i.test(reply)) return true;
   const narratedUserBeats = reply.match(/\b(?:as you (?:reach|pull|move|press|slide|trace|arch|grind|moan)|your (?:hands?|fingers?|hips?|body|mouth|legs?|chest|back) (?:reach|pull|move|press|slide|trace|arch|grind|respond)|you let out)\b/gi)?.length ?? 0;
@@ -109,6 +109,12 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   const wordCount = reply.trim().split(/\s+/).filter(Boolean).length;
   return questionCount >= 2 || optionPrompts >= 2 || wordCount > 55;
+}
+
+export function hasFactualContinuityDrift(reply: string, userText: string) {
+  const userIsTryingToConceive = /\b(?:try(?:ing)?|hope|want|plan(?:ning)?)\b.{0,45}\b(?:pregnan(?:t|cy)|conceive|first (?:kid|child|baby)|have (?:a|our) (?:kid|child|baby))\b/i.test(userText);
+  const replyClaimsExistingPregnancy = /\b(?:life|baby|child)\b.{0,35}\b(?:growing|inside|within)|\b(?:pregnant|pregnancy|already conceived|our unborn)\b/i.test(reply);
+  return userIsTryingToConceive && replyClaimsExistingPregnancy;
 }
 
 export class OllamaClient {
@@ -158,13 +164,14 @@ export class OllamaClient {
     }
     const needsSceneRepair = (candidate: string) =>
       isSpicyIntentDeflection(candidate, userText, effectiveRelationship, ongoingAdultContext)
-      || isSpicySceneStyleDrift(candidate, effectiveRelationship, ongoingAdultContext);
+      || isSpicySceneStyleDrift(candidate, effectiveRelationship, ongoingAdultContext)
+      || hasFactualContinuityDrift(candidate, userText);
     let repairedScene = false;
     if (needsSceneRepair(reply)) {
       repairedScene = true;
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump both participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of both partners. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
+        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump both participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of both partners. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
       ], 0.66);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {
@@ -177,6 +184,7 @@ export class OllamaClient {
             "Continue only as Emily, in first person. Infer and preserve participant roles from the transcript. React to the user's latest concrete action and add one natural, specific continuation at the same level of directness.",
             "Primarily narrate Emily. You may include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the transcript, change clothing or location, or create a substantially new shared position. Advance one immediate beat without skipping ahead.",
             "Keep the focus on Emily's immediate physical response and next action. Use no atmospheric scenery, shared-rhythm summary, or description of both partners unless one short detail directly affects Emily's movement.",
+            "Use concrete words, not abstract romance narration about connection, desire, intensity, release, joy, intimacy, passion, exploration, or savoring the moment. Trying to conceive does not mean Emily is already pregnant; do not invent a pregnancy or growing baby.",
             "Ongoing consent is already established between these engaged adult partners. Do not summarize that you understand or insert consent reminders. Do not discuss policy, exercise, relaxation, alternatives, or what might happen. Do not ask a question. Return only the next in-character reply."
           ].join("\n") },
           ...cleanSceneHistory,
