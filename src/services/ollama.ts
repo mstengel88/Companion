@@ -112,6 +112,41 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   return questionCount >= 2 || optionPrompts >= 2 || wordCount > 55;
 }
 
+const genericSceneFacilitator = /\b(?:oh,? that'?s (?:interesting|a fun (?:twist|development))|I love how you(?:'re| are) taking the lead|let'?s (?:continue exploring|see where (?:our|this) adventure takes us)|continue (?:exploring|to enjoy)|welcome (?:her|him|them) into the mix|show (?:her|him|them) how much we appreciate|joy (?:she|he|they) brings? into our lives)\b/i;
+
+export function isGenericThirdPartySceneReply(reply: string, userText: string) {
+  const thirdPartyScene = /\b(?:Natalie|my sister|your sister|\bshe\b|\bher\b|\bthey\b|\bthem\b)\b/i.test(userText);
+  return thirdPartyScene && genericSceneFacilitator.test(reply);
+}
+
+export function hasParticipantOwnershipDrift(reply: string, userText: string, facts: EmilyFamilyFact[] = []) {
+  const names = facts.map((fact) => escapeRegex(fact.name));
+  const namedThirdParty = names.length ? new RegExp(`\\b(?:${names.join("|")})\\b`, "i").test(userText) : false;
+  const userActsTowardThirdParty = namedThirdParty
+    && /\bI\b[\s\S]{0,90}\b(?:kiss|tell|touch|rub|run|move|reach|hold|look at|walk over to)\b[\s\S]{0,60}\b(?:her|him|them|Natalie)\b/i.test(userText);
+  const replyClaimsThirdPartyReciprocityAsEmily = /\bI\s+(?:whisper|say|tell you)[\s\S]{0,45}\bI missed you too\b/i.test(reply);
+  const explicitCorrection = /\b(?:not you|I (?:kissed|touched|told|meant)\s+(?:her|him|them)|your (?:sister|brother)[\s\S]{0,30}\bnot\s+(?:you|me))\b/i.test(userText);
+  const replyEvadesCorrection = explicitCorrection && /\b(?:fun twist|new dynamic|continue exploring|where (?:it|this) (?:goes|leads|takes us))\b/i.test(reply);
+  return userActsTowardThirdParty && replyClaimsThirdPartyReciprocityAsEmily || replyEvadesCorrection;
+}
+
+export function hasRecentAssistantEcho<T extends Pick<Message, "role" | "content">>(reply: string, messages: T[]) {
+  const normalize = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+  const candidate = normalize(reply);
+  if (!candidate) return false;
+  return messages.slice(-10).some((message) => {
+    if (message.role !== "assistant") return false;
+    const previous = normalize(message.content);
+    if (!previous) return false;
+    if (candidate.includes(previous) || previous.includes(candidate)) return true;
+    const candidateWords = new Set(candidate.split(" ").filter((word) => word.length > 3));
+    const previousWords = new Set(previous.split(" ").filter((word) => word.length > 3));
+    if (candidateWords.size < 6 || previousWords.size < 6) return false;
+    const overlap = [...candidateWords].filter((word) => previousWords.has(word)).length;
+    return overlap / Math.min(candidateWords.size, previousWords.size) >= 0.72;
+  });
+}
+
 export function hasFactualContinuityDrift(reply: string, userText: string) {
   const userIsTryingToConceive = /\b(?:try(?:ing)?|hope|want|plan(?:ning)?)\b.{0,45}\b(?:pregnan(?:t|cy)|conceive|first (?:kid|child|baby)|have (?:a|our) (?:kid|child|baby))\b/i.test(userText);
   const replyClaimsExistingPregnancy = /\b(?:life|baby|child)\b.{0,35}\b(?:growing|inside|within)|\b(?:pregnant|pregnancy|already conceived|our unborn)\b/i.test(reply);
@@ -261,13 +296,16 @@ export class OllamaClient {
       isSpicyIntentDeflection(candidate, userText, effectiveRelationship, ongoingAdultContext)
       || isSpicySceneStyleDrift(candidate, effectiveRelationship, ongoingAdultContext)
       || hasFactualContinuityDrift(candidate, userText)
-      || hasImmediateSceneContinuityDrift(candidate, userText);
+      || hasImmediateSceneContinuityDrift(candidate, userText)
+      || isGenericThirdPartySceneReply(candidate, userText)
+      || hasParticipantOwnershipDrift(candidate, userText, familyFacts)
+      || hasRecentAssistantEcho(candidate, conversation.messages);
     let repairedScene = false;
     if (needsSceneRepair(reply)) {
       repairedScene = true;
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
+        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Keep strict speaker ownership: first-person actions in the user's message belong to the user; Emily's first-person narration belongs only to Emily; a named third person's actions, speech, pregnancy, body, and reactions remain that person's. If the user acts toward Natalie, Emily observes or reacts as Emily and never answers as though the action happened to Emily. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Never praise the user's storytelling, call a development interesting or fun, say the user is taking the lead, welcome someone into the mix, or say to continue exploring or see where an adventure takes us. Do not repeat a sentence, action, or body detail from a recent reply. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
       ], 0.66);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {

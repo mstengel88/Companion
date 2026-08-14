@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -131,6 +131,28 @@ test("rejects wake-up advice and grounds the final discovery fallback", () => {
     groundedPresentDiscoveryReply(userText, [{ name: "Natalie", role: "sister" }]),
     "I stop beside you, taking in Natalie's bare figure on the bed before I glance back at you with a slow, surprised smile. “My sister certainly knows how to surprise us.”"
   );
+});
+
+test("rejects generic facilitator language in a Natalie scene", () => {
+  const userText = "I slowly move my hand down to Natalie and she reacts.";
+  assert.equal(isGenericThirdPartySceneReply("Oh, that's a fun development! Let's see where our adventure takes us next.", userText), true);
+  assert.equal(isGenericThirdPartySceneReply("I hold Natalie's gaze and move closer beside you.", userText), false);
+});
+
+test("keeps the user's action toward Natalie from becoming Emily's action", () => {
+  const facts = [{ name: "Natalie", role: "sister" }];
+  const userText = "I walk over to Natalie, kiss her, then tell her I missed her.";
+  assert.equal(hasParticipantOwnershipDrift("As you lean in, I whisper, ‘I missed you too.’", userText, facts), true);
+  assert.equal(hasParticipantOwnershipDrift("I watch Natalie smile at your words and step closer to her other side.", userText, facts), false);
+  assert.equal(hasParticipantOwnershipDrift("Oh, that's a fun twist! Let's continue exploring this new dynamic.", "I kissed your sister and told her I missed her, not you.", facts), true);
+});
+
+test("rejects near-duplicate recent assistant replies", () => {
+  const history = [
+    { role: "assistant" as const, content: "As you run your hand down her baby bump, let's see where our adventure takes us next." }
+  ];
+  assert.equal(hasRecentAssistantEcho("As you continue running your hand down her baby bump, let's see where our adventure takes us next.", history), true);
+  assert.equal(hasRecentAssistantEcho("I catch Natalie's giggle and meet her eyes from beside you.", history), false);
 });
 
 test("Emily keeps ownership of her family relationships in first person", () => {
