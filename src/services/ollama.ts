@@ -167,6 +167,19 @@ export function relationshipSafeHistory<T extends Pick<Message, "role" | "conten
   return messages.filter((message) => message.role !== "assistant" || !hasRelationshipPerspectiveDrift(message.content, facts));
 }
 
+const everydayActionRequest = /\b(?:let'?s|we (?:need|have|got) to|we can'?t|alright|okay|come on)\b[\s\S]{0,90}\b(?:go|find|look for|call|text|check on|head|leave|get moving)\b/i;
+const cannedEverydayReply = /\b(?:family (?:always )?comes first|loving adventures?|exploring new places|joy she brings into our lives|make sure (?:we|to) (?:take the time to )?(?:check on|get back to)|everyone is included|eager to join us|absolutely right|it'?s crucial that we ensure)\b/i;
+const immediateFirstPersonAction = /\bI(?:'m| am)?\s+(?:already\s+)?(?:grab|grabbing|reach|reaching|stand|standing|step|stepping|head|heading|pull|pulling|pick|picking|call|calling|text|texting|open|opening|start|starting|walk|walking|lead|leading|follow|following|turn|turning|take|taking)\b/i;
+
+export function isGenericActionDeflection(reply: string, userText: string) {
+  if (!everydayActionRequest.test(userText)) return false;
+  return cannedEverydayReply.test(reply) || !immediateFirstPersonAction.test(reply);
+}
+
+export function everydaySafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[]): T[] {
+  return messages.filter((message) => message.role !== "assistant" || !cannedEverydayReply.test(message.content));
+}
+
 export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
@@ -203,7 +216,7 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts),
+      ...everydaySafeHistory(relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts)),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
@@ -270,6 +283,23 @@ export class OllamaClient {
         ], 0.5);
       }
       reply = compactRoleplayReply(reply);
+    }
+    if (isGenericActionDeflection(reply, userText)) {
+      const namedFamily = familyFacts.length
+        ? `Preserve these facts and pronouns: ${familyFacts.map((fact) => `${fact.name} is Emily's ${fact.role}`).join("; ")}. Emily calls that person my ${familyFacts.map((fact) => fact.role).join(" or my ")}.`
+        : "Preserve every established relationship and pronoun.";
+      reply = await this.complete([
+        ...messages,
+        { role: "system", content: `The previous draft merely agreed with or summarized the user's plan. Rewrite it as Emily taking one concrete, immediate next action in the current scene. ${namedFamily} Use one or two natural first-person sentences. React specifically to the user's latest words and move the moment forward without inventing the outcome. Do not moralize about family, repeat that family comes first, mention loving adventures, promise to make sure of something later, summarize shared values, or use generic enthusiasm. Return only Emily's fresh reply.` }
+      ], 0.65);
+      if (isGenericActionDeflection(reply, userText)) {
+        reply = await this.complete([
+          { role: "system", content: `Write one brief, grounded reply as Emily. ${namedFamily} The user has just proposed an immediate action. Begin with a specific first-person physical action Emily takes now, then add at most one short spoken line. Do not agree, summarize, explain, praise the plan, discuss values, or ask a question. Do not invent whether the search or task succeeds. Output only Emily's reply.` },
+          ...everydaySafeHistory(relationshipSafeHistory(conversation.messages, familyFacts)).slice(-6),
+          { role: "user", content: userText }
+        ], 0.58);
+      }
+      reply = compactRoleplayReply(reply, 2, 42);
     }
     reply = correctRelationshipPerspective(reply, familyFacts);
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasRelationshipPerspectiveDrift, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -132,6 +132,18 @@ test("Emily keeps ownership of her family relationships in first person", () => 
     { role: "assistant", content: "Natalie is my sister." },
     { role: "user", content: "Natalie is your sister." }
   ]);
+});
+
+test("everyday action requests reject generic agreement and keep concrete continuations", () => {
+  const userText = "Alright, let's go find Natalie.";
+  assert.equal(isGenericActionDeflection("Absolutely right! Family always comes first, and we'll make sure everyone is included in our loving adventures.", userText), true);
+  assert.equal(isGenericActionDeflection("I grab my phone and keys and head for the door. “Come on—let's find my sister.”", userText), false);
+  assert.equal(isGenericActionDeflection("Family comes first.", "I miss Natalie today."), false);
+  assert.deepEqual(everydaySafeHistory([
+    { role: "assistant" as const, content: "Family always comes first, and everyone should be included in our loving adventures." },
+    { role: "assistant" as const, content: "I grab my phone and keys." },
+    { role: "user" as const, content: userText }
+  ]).map((message) => message.content), ["I grab my phone and keys.", userText]);
 });
 
 test("compacts a repaired roleplay draft to two sentences and a hard word ceiling", () => {
