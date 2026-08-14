@@ -67,6 +67,19 @@ test("preserves spicy continuity when recent conversation is already explicit", 
   ), true);
 });
 
+test("adult photo wording also preserves spicy continuity", () => {
+  const relationship = effectiveRelationshipForConversation([
+    { role: "user" as const, content: "Show me a pic of your boobs baby." },
+    { role: "assistant" as const, content: "Would you prefer a peaceful landscape?" }
+  ], { intensity: "flirty" }, "I push my hips into you so you can feel me poke you.");
+  assert.equal(relationship.intensity, "spicy");
+  assert.equal(isSpicyIntentDeflection(
+    "Let's make sure it's comfortable for both of us and try gentle stretching and relaxation.",
+    "I push my hips into you so you can feel me poke you.",
+    relationship
+  ), true);
+});
+
 test("does not elevate an ordinary warm or flirty conversation", () => {
   assert.deepEqual(effectiveRelationshipForConversation(
     [{ role: "assistant" as const, content: "That snowboard trip sounds fun." }],

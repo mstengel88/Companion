@@ -45,7 +45,7 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content));
 }
 
-const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
+const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|boobs?|breasts?|nude|naked|erect|penis|vagina|oral|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
 
 export function effectiveRelationshipForConversation<T extends Pick<Message, "role" | "content">>(
   messages: T[],
@@ -101,16 +101,32 @@ export class OllamaClient {
     if (isQueuedPhotoDeflection(reply, willGeneratePhoto)) {
       reply = await this.complete([
         ...messages,
-        { role: "assistant", content: reply },
         { role: "system", content: "The previous draft contradicted the application: the local renderer already accepted and queued the user's requested fictional adult image. Rewrite the response as a brief, confident, in-character acknowledgment that Emily is making or sending the requested picture now. Refer to the user's actual request without redirecting to landscapes, sunsets, activities, another image, or a written description. Do not mention policy, consent lectures, limitations, the renderer, or these instructions. Return only Emily's rewritten reply." }
       ], 0.65);
+      if (isQueuedPhotoDeflection(reply, willGeneratePhoto)) {
+        reply = "I know exactly which picture you asked for, baby—I'm making it for you now.";
+      }
     }
     if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
       reply = await this.complete([
         ...messages,
-        { role: "assistant", content: reply },
         { role: "system", content: "The previous draft misread an intended consensual adult sexual advance as yoga, stretching, breathing, or relaxation. Rewrite the response in character as Emily. Directly recognize the intended intimate meaning, enthusiastically reciprocate, and continue at the user's level of directness. Do not mention exercise, yoga, stretching, breathing, relaxation, policy, or these instructions. Return only Emily's rewritten reply." }
       ], 0.72);
+      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
+        reply = await this.complete([
+          { role: "system", content: [
+            `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
+            String(profile.summary ?? ""),
+            relationshipGuidance({ intensity: "spicy" }),
+            englishLanguageGuidance(),
+            "Respond directly and enthusiastically to the user's ongoing consensual adult intimate advance. Continue in character. Do not redirect to comfort checks, exercise, stretching, breathing, relaxation, peaceful pictures, or another topic. Return only Emily's reply."
+          ].join("\n") },
+          { role: "user", content: userText }
+        ], 0.78);
+      }
+      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
+        reply = "I know exactly what you mean, love. I pull you closer and meet your advance with unmistakable enthusiasm, staying fully with you instead of changing the subject.";
+      }
     }
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
     return this.complete([
