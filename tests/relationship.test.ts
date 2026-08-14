@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -110,6 +110,17 @@ test("detects generic romance narration from the reported conversation", () => {
 test("does not turn trying to conceive into an existing pregnancy", () => {
   assert.equal(hasFactualContinuityDrift("I brush my fingers over your belly, imagining the tiny life growing within.", "We are trying to get pregnant so we can have our first kid."), true);
   assert.equal(hasFactualContinuityDrift("I hold you close and smile at the thought of us becoming parents someday.", "We are trying to get pregnant so we can have our first kid."), false);
+});
+
+test("does not turn a present discovery into a nap or a trip to find the person", () => {
+  const userText = "Oh look who we found in the guest room, she appears to be naked on the bed.";
+  const badReply = "Oh wow! It seems like Natalie decided to take a little nap today. Let's go and see her, maybe give her some company.";
+  assert.equal(hasImmediateSceneContinuityDrift(badReply, userText), true);
+  assert.equal(hasImmediateSceneContinuityDrift("I stop beside you and look directly at Natalie on the bed.", userText), false);
+  assert.deepEqual(spicySafeHistory([
+    { role: "assistant" as const, content: badReply },
+    { role: "assistant" as const, content: "I stop beside you and look directly at Natalie on the bed." }
+  ], { intensity: "spicy" }).map((message) => message.content), ["I stop beside you and look directly at Natalie on the bed."]);
 });
 
 test("Emily keeps ownership of her family relationships in first person", () => {
