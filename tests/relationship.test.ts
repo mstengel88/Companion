@@ -31,12 +31,17 @@ test("spicy mode is adult, consensual, and contextual", () => {
 test("detects perspective-breaking option menus in an ongoing spicy scene", () => {
   const reply = "Let's keep it steamy. How about you riding me? That sounds like a great workout. Are you up for more intense action or would you rather take it slow? What do you think?";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
-  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "flirty" }, true), false);
+  assert.equal(isSpicySceneStyleDrift("Would you like tea or coffee?", { intensity: "flirty" }, false), false);
 });
 
 test("allows a direct role-consistent continuation without forced questions", () => {
   const reply = "I understand your invitation and continue the established moment from my own perspective.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
+});
+
+test("detects a failed final rewrite from the reply's own intimate wording", () => {
+  const reply = "I'm really into this. Let's explore intimate positions together. How about a back massage or a cozy cuddle session? What do you think?";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "flirty" }, false), true);
 });
 
 test("spicy mode removes generic false-consent refusals from recent context", () => {

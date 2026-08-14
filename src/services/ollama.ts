@@ -72,8 +72,10 @@ export function isSpicyIntentDeflection(reply: string, userText: string, relatio
 }
 
 export function isSpicySceneStyleDrift(reply: string, relationship: RelationshipSettings, ongoingAdultContext = false) {
-  if (relationship.intensity !== "spicy" || !ongoingAdultContext) return false;
-  if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
+  const replySignalsIntimateScene = /\b(?:steamy|turned on|intimate positions?|erotic|sexual)\b/i.test(reply);
+  if (relationship.intensity !== "spicy" && !replySignalsIntimateScene) return false;
+  if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
+  if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity|back massage|cuddle session|soft hug)\b/i.test(reply)) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   return questionCount >= 2 || optionPrompts >= 2;
@@ -160,6 +162,9 @@ export class OllamaClient {
           ...spicySafeHistory(conversation.messages, effectiveRelationship),
           { role: "user", content: userText }
         ], 0.76);
+      }
+      if (isSpicySceneStyleDrift(reply, effectiveRelationship, ongoingAdultContext)) {
+        reply = "I understand your invitation, love. I pull you closer and take the initiative, letting my playful side lead as I keep our intimate moment moving without hesitation.";
       }
     }
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
