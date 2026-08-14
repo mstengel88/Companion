@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -153,6 +153,23 @@ test("rejects near-duplicate recent assistant replies", () => {
   ];
   assert.equal(hasRecentAssistantEcho("As you continue running your hand down her baby bump, let's see where our adventure takes us next.", history), true);
   assert.equal(hasRecentAssistantEcho("I catch Natalie's giggle and meet her eyes from beside you.", history), false);
+});
+
+test("requires the reply to follow the newest clothing action", () => {
+  const userText = "Oh yes, let's get those yoga pants off you.";
+  assert.equal(hasLatestActionOmission("As you pull me onto the bed, it seems we're not just joining Natalie but diving into our own exploration.", userText), true);
+  assert.equal(hasLatestActionOmission("I hook my thumbs under the waistband and begin sliding the yoga pants down my hips.", userText), false);
+});
+
+test("rejects newly invented reactions for Natalie", () => {
+  const facts = [{ name: "Natalie", role: "sister" }];
+  assert.equal(hasInventedThirdPartyReaction("Natalie relaxes into our shared touch with a contented sigh.", "Your sister is really liking that.", facts), true);
+  assert.equal(hasInventedThirdPartyReaction("I grin when Natalie giggles and move beside you.", "Natalie giggles.", facts), false);
+});
+
+test("detects broken text encoding", () => {
+  assert.equal(hasTextEncodingDrift("I slide my hand into yours as weâ€™re moving closer."), true);
+  assert.equal(hasTextEncodingDrift("I slide my hand into yours as we're moving closer."), false);
 });
 
 test("Emily keeps ownership of her family relationships in first person", () => {
