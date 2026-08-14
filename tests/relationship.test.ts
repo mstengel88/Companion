@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance } from "../src/services/relationship.js";
-import { isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
+import { effectiveRelationshipForConversation, isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -53,4 +53,24 @@ test("does not retry an on-topic spicy response", () => {
     "I push my hips into you so you can feel me poke you.",
     { intensity: "spicy" }
   ), false);
+});
+
+test("preserves spicy continuity when recent conversation is already explicit", () => {
+  const relationship = effectiveRelationshipForConversation([
+    { role: "assistant" as const, content: "I respond to the ongoing sexual scene." }
+  ], { intensity: "flirty" }, "I push my hips into you so you can feel me poke you.");
+  assert.equal(relationship.intensity, "spicy");
+  assert.equal(isSpicyIntentDeflection(
+    "Let's focus on deep breathing and try a different stretch.",
+    "I push my hips into you so you can feel me poke you.",
+    relationship
+  ), true);
+});
+
+test("does not elevate an ordinary warm or flirty conversation", () => {
+  assert.deepEqual(effectiveRelationshipForConversation(
+    [{ role: "assistant" as const, content: "That snowboard trip sounds fun." }],
+    { intensity: "warm" },
+    "We should plan it."
+  ), { intensity: "warm" });
 });

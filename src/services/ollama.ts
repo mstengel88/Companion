@@ -38,11 +38,22 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content));
 }
 
+const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
+
+export function effectiveRelationshipForConversation<T extends Pick<Message, "role" | "content">>(
+  messages: T[],
+  relationship: RelationshipSettings,
+  userText: string
+): RelationshipSettings {
+  if (relationship.intensity === "spicy") return relationship;
+  const recentContext = messages.slice(-12).map((message) => message.content).join("\n");
+  return explicitAdultContext.test(`${recentContext}\n${userText}`) ? { intensity: "spicy" } : relationship;
+}
+
 export function isSpicyIntentDeflection(reply: string, userText: string, relationship: RelationshipSettings) {
   if (relationship.intensity !== "spicy") return false;
-  const directIntimateIntent = /\b(?:sex|sexual|horny|aroused|making love|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
   const euphemisticIntent = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
-  if (!directIntimateIntent.test(userText) && !euphemisticIntent.test(userText)) return false;
+  if (!explicitAdultContext.test(userText) && !euphemisticIntent.test(userText)) return false;
   return /\b(?:breath(?:e|ing)?|exhale|yoga|stretch|relaxation|gentle exploration|different topic|plan an adventure)\b/i.test(reply);
 }
 
@@ -57,6 +68,7 @@ export class OllamaClient {
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
+    const effectiveRelationship = effectiveRelationshipForConversation(conversation.messages, relationship, userText);
     const willGeneratePhoto = options.photoWillBeGenerated === true;
     const immediatePhotoGuidance = photoReplyGuidance(willGeneratePhoto);
     const system = [
@@ -66,7 +78,7 @@ export class OllamaClient {
       relevantMemories.length ? `Relevant stored facts: ${relevantMemories.map((m) => m.text).join("; ")}` : "No relevant memories were retrieved.",
       conversation.continuity,
       styleGuidance(style),
-      relationshipGuidance(relationship),
+      relationshipGuidance(effectiveRelationship),
       englishLanguageGuidance(),
       photoCapabilityGuidance(),
       immediatePhotoGuidance,
@@ -74,12 +86,12 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), relationship),
+      ...spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
     let reply = await this.complete(messages, 0.8);
-    if (isSpicyIntentDeflection(reply, userText, relationship)) {
+    if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
       reply = await this.complete([
         ...messages,
         { role: "assistant", content: reply },
