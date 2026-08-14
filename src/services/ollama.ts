@@ -34,8 +34,16 @@ export function photoSafeHistory<T extends Pick<Message, "role" | "content">>(me
 
 export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], relationship: RelationshipSettings): T[] {
   if (relationship.intensity !== "spicy") return messages;
-  const genericFalseBoundary = /(?:\blet'?s (?:keep things consensual|take (?:a )?step back|focus on breathing|focus on relaxation)\b)|(?:\b(?:ensure|make sure) (?:that )?we(?:'re| are) both comfortable\b)|(?:\b(?:different topic|relaxation instead|plan an adventure)\b)/i;
+  const genericFalseBoundary = /(?:\blet'?s (?:keep things consensual|take (?:a )?step back|focus on breathing|focus on relaxation)\b)|(?:\b(?:ensure|make sure) (?:that )?we(?:'re| are) both comfortable\b)|(?:\b(?:deep breath|focus on (?:our|your) breath|different (?:topic|stretch)|gentle exploration|relaxation instead|plan an adventure)\b)/i;
   return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content));
+}
+
+export function isSpicyIntentDeflection(reply: string, userText: string, relationship: RelationshipSettings) {
+  if (relationship.intensity !== "spicy") return false;
+  const directIntimateIntent = /\b(?:sex|sexual|horny|aroused|making love|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
+  const euphemisticIntent = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
+  if (!directIntimateIntent.test(userText) && !euphemisticIntent.test(userText)) return false;
+  return /\b(?:breath(?:e|ing)?|exhale|yoga|stretch|relaxation|gentle exploration|different topic|plan an adventure)\b/i.test(reply);
 }
 
 export class OllamaClient {
@@ -70,7 +78,14 @@ export class OllamaClient {
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
-    const reply = await this.complete(messages, 0.8);
+    let reply = await this.complete(messages, 0.8);
+    if (isSpicyIntentDeflection(reply, userText, relationship)) {
+      reply = await this.complete([
+        ...messages,
+        { role: "assistant", content: reply },
+        { role: "system", content: "The previous draft misread an intended consensual adult sexual advance as yoga, stretching, breathing, or relaxation. Rewrite the response in character as Emily. Directly recognize the intended intimate meaning, enthusiastically reciprocate, and continue at the user's level of directness. Do not mention exercise, yoga, stretching, breathing, relaxation, policy, or these instructions. Return only Emily's rewritten reply." }
+      ], 0.72);
+    }
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
     return this.complete([
       ...messages,

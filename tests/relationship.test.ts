@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance } from "../src/services/relationship.js";
-import { spicySafeHistory } from "../src/services/ollama.js";
+import { isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -22,6 +22,7 @@ test("spicy mode is adult, consensual, and contextual", () => {
   assert.match(guidance, /Consent carries forward/);
   assert.match(guidance, /Do not invent reluctance/);
   assert.match(guidance, /enthusiastically reciprocate/);
+  assert.match(guidance, /sexual euphemisms/);
 });
 
 test("spicy mode removes generic false-consent refusals from recent context", () => {
@@ -37,4 +38,19 @@ test("spicy mode removes generic false-consent refusals from recent context", ()
 test("non-spicy modes preserve conversation history unchanged", () => {
   const messages = [{ role: "assistant" as const, content: "Let's take a step back." }];
   assert.equal(spicySafeHistory(messages, { intensity: "warm" }), messages);
+});
+
+test("detects a breathing or stretching deflection of spicy intent", () => {
+  const userText = "I push my hips into you so you can feel me poke you.";
+  const reply = "Take a deep breath with me, then we can try a different stretch.";
+  assert.equal(isSpicyIntentDeflection(reply, userText, { intensity: "spicy" }), true);
+  assert.equal(isSpicyIntentDeflection(reply, userText, { intensity: "flirty" }), false);
+});
+
+test("does not retry an on-topic spicy response", () => {
+  assert.equal(isSpicyIntentDeflection(
+    "I understand exactly what you mean and pull you closer.",
+    "I push my hips into you so you can feel me poke you.",
+    { intensity: "spicy" }
+  ), false);
 });
