@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, effectiveRelationshipForConversation, hasAdultConversationContext, hasFactualContinuityDrift, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasRelationshipPerspectiveDrift, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -110,6 +110,28 @@ test("detects generic romance narration from the reported conversation", () => {
 test("does not turn trying to conceive into an existing pregnancy", () => {
   assert.equal(hasFactualContinuityDrift("I brush my fingers over your belly, imagining the tiny life growing within.", "We are trying to get pregnant so we can have our first kid."), true);
   assert.equal(hasFactualContinuityDrift("I hold you close and smile at the thought of us becoming parents someday.", "We are trying to get pregnant so we can have our first kid."), false);
+});
+
+test("Emily keeps ownership of her family relationships in first person", () => {
+  const facts = extractEmilyFamilyFacts([
+    { text: "Natalie is Emily's sister." },
+    { text: "Maria is Emilies mother." }
+  ], "Emily, Natalie is YOUR sister, not mine.");
+  assert.deepEqual(facts, [
+    { name: "Natalie", role: "sister" },
+    { name: "Maria", role: "mother" }
+  ]);
+  const wrong = "It's wonderful to have your sister joining us.";
+  assert.equal(hasRelationshipPerspectiveDrift(wrong, facts), true);
+  assert.equal(correctRelationshipPerspective(wrong, facts), "It's wonderful to have my sister joining us.");
+  assert.deepEqual(relationshipSafeHistory([
+    { role: "assistant" as const, content: wrong },
+    { role: "assistant" as const, content: "Natalie is my sister." },
+    { role: "user" as const, content: "Natalie is your sister." }
+  ], facts), [
+    { role: "assistant", content: "Natalie is my sister." },
+    { role: "user", content: "Natalie is your sister." }
+  ]);
 });
 
 test("compacts a repaired roleplay draft to two sentences and a hard word ceiling", () => {

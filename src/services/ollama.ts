@@ -117,6 +117,56 @@ export function hasFactualContinuityDrift(reply: string, userText: string) {
   return userIsTryingToConceive && replyClaimsExistingPregnancy;
 }
 
+export interface EmilyFamilyFact {
+  name: string;
+  role: string;
+}
+
+const familyRolePattern = "sister|brother|mother|father|mom|dad|daughter|son|aunt|uncle|cousin|niece|nephew|grandmother|grandfather|grandma|grandpa";
+
+export function extractEmilyFamilyFacts(memories: Array<Pick<Memory, "text">>, userText = ""): EmilyFamilyFact[] {
+  const facts = new Map<string, EmilyFamilyFact>();
+  const sources = [...memories.map((memory) => memory.text), userText];
+  const direct = new RegExp(`\\b([A-Z][\\p{L}'’-]*)\\s+(?:is|being)\\s+(?:Emily(?:['’]s|s)|Emilies|your)\\s+(${familyRolePattern})\\b`, "giu");
+  const inverse = new RegExp(`\\b(?:Emily(?:['’]s|s)|Emilies)\\s+(${familyRolePattern})\\s+(?:is|named)\\s+([A-Z][\\p{L}'’-]*)\\b`, "giu");
+  for (const source of sources) {
+    for (const match of source.matchAll(direct)) {
+      if (!match[1] || !match[2]) continue;
+      const fact = { name: match[1], role: match[2].toLowerCase() };
+      facts.set(`${fact.name.toLowerCase()}:${fact.role}`, fact);
+    }
+    for (const match of source.matchAll(inverse)) {
+      if (!match[1] || !match[2]) continue;
+      const fact = { name: match[2], role: match[1].toLowerCase() };
+      facts.set(`${fact.name.toLowerCase()}:${fact.role}`, fact);
+    }
+  }
+  return [...facts.values()];
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function hasRelationshipPerspectiveDrift(reply: string, facts: EmilyFamilyFact[]) {
+  return facts.some((fact) => new RegExp(`\\byour\\s+${escapeRegex(fact.role)}\\b`, "i").test(reply));
+}
+
+export function correctRelationshipPerspective(reply: string, facts: EmilyFamilyFact[]) {
+  let corrected = reply;
+  for (const fact of facts) {
+    corrected = corrected.replace(new RegExp(`\\byour\\s+${escapeRegex(fact.role)}\\b`, "gi"), (phrase) =>
+      /^[A-Z]/.test(phrase) ? `My ${fact.role}` : `my ${fact.role}`
+    );
+  }
+  return corrected;
+}
+
+export function relationshipSafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], facts: EmilyFamilyFact[]): T[] {
+  if (!facts.length) return messages;
+  return messages.filter((message) => message.role !== "assistant" || !hasRelationshipPerspectiveDrift(message.content, facts));
+}
+
 export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
@@ -128,6 +178,10 @@ export class OllamaClient {
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
+    const familyFacts = extractEmilyFamilyFacts(relevantMemories, userText);
+    const familyGuidance = familyFacts.length
+      ? `Emily's first-person family facts: ${familyFacts.map((fact) => `${fact.name} is my ${fact.role}`).join("; ")}. When Emily speaks, keep each as my ${familyFacts.map((fact) => fact.role).join(" or my ")}, never the user's relative.`
+      : "Stored relationship facts must retain their owner when converted into Emily's first-person voice.";
     const ongoingAdultContext = hasAdultConversationContext(conversation.messages, userText);
     const effectiveRelationship = effectiveRelationshipForConversation(conversation.messages, relationship, userText);
     const willGeneratePhoto = options.photoWillBeGenerated === true;
@@ -137,6 +191,7 @@ export class OllamaClient {
       String(profile.summary ?? ""),
       `Profile JSON: ${JSON.stringify(profile)}`,
       relevantMemories.length ? `Relevant stored facts: ${relevantMemories.map((m) => m.text).join("; ")}` : "No relevant memories were retrieved.",
+      familyGuidance,
       conversation.continuity,
       styleGuidance(style),
       roleplayWritingGuidance(),
@@ -148,7 +203,7 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship),
+      ...relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
@@ -216,13 +271,14 @@ export class OllamaClient {
       }
       reply = compactRoleplayReply(reply);
     }
+    reply = correctRelationshipPerspective(reply, familyFacts);
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
     const corrected = await this.complete([
       ...messages,
       { role: "assistant", content: reply },
       { role: "system", content: "The previous draft drifted into a language the user did not request. Rewrite the entire reply in natural English, completing any sentence that was interrupted. Return only the corrected reply." }
     ], 0.55);
-    return repairedScene ? compactRoleplayReply(corrected) : corrected;
+    return correctRelationshipPerspective(repairedScene ? compactRoleplayReply(corrected) : corrected, familyFacts);
   }
 
   private async complete(messages: Array<Pick<Message, "role" | "content">>, temperature: number) {
