@@ -44,6 +44,11 @@ test("detects a failed final rewrite from the reply's own intimate wording", () 
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "flirty" }, false), true);
 });
 
+test("allows massage and cuddling when they are a direct natural continuation", () => {
+  const reply = "I settle into your arms and return the slow massage, relaxing into a warm cuddle with you.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
+});
+
 test("spicy mode removes generic false-consent refusals from recent context", () => {
   const messages = [
     { role: "user" as const, content: "I pull you closer." },

@@ -75,7 +75,7 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   const replySignalsIntimateScene = /\b(?:steamy|turned on|intimate positions?|erotic|sexual)\b/i.test(reply);
   if (relationship.intensity !== "spicy" && !replySignalsIntimateScene) return false;
   if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
-  if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity|back massage|cuddle session|soft hug)\b/i.test(reply)) return true;
+  if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   return questionCount >= 2 || optionPrompts >= 2;
@@ -149,7 +149,7 @@ export class OllamaClient {
     if (isSpicySceneStyleDrift(reply, effectiveRelationship, ongoingAdultContext)) {
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft broke character continuity by reversing participant roles, framing intimacy as exercise, or ending with repeated questions and options. Rewrite it in Emily's first-person voice. Preserve exactly who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Take natural in-character initiative and continue the ongoing scene with one cohesive response. Do not call it a workout, exercise, stretch, or relaxation. Do not offer a menu, ask what the user thinks, or end with a question. Return only Emily's rewritten reply." }
+        { role: "system", content: "The previous draft broke character continuity by reversing participant roles, framing intimacy as exercise, or ending with repeated questions and options. Rewrite it in Emily's first-person voice. Preserve exactly who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Take natural in-character initiative and continue the ongoing scene with one cohesive response. Do not call it a workout, exercise, stretch, or relaxation. Do not offer a menu, ask what the user thinks, or end with a question. Affection, massage, and cuddling remain welcome when the user requests them or they genuinely fit the scene; do not use them as an automatic detour from the user's established intent. Return only Emily's rewritten reply." }
       ], 0.72);
       if (isSpicySceneStyleDrift(reply, effectiveRelationship, ongoingAdultContext)) {
         reply = await this.complete([
