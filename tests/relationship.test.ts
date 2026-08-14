@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance } from "../src/services/relationship.js";
-import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
+import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -23,6 +23,20 @@ test("spicy mode is adult, consensual, and contextual", () => {
   assert.match(guidance, /Do not invent reluctance/);
   assert.match(guidance, /enthusiastically reciprocate/);
   assert.match(guidance, /sexual euphemisms/);
+  assert.match(guidance, /Maintain Emily's first-person identity/);
+  assert.match(guidance, /never reverse who is doing what/);
+  assert.match(guidance, /instead of presenting a menu of options/);
+});
+
+test("detects perspective-breaking option menus in an ongoing spicy scene", () => {
+  const reply = "Let's keep it steamy. How about you riding me? That sounds like a great workout. Are you up for more intense action or would you rather take it slow? What do you think?";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "flirty" }, true), false);
+});
+
+test("allows a direct role-consistent continuation without forced questions", () => {
+  const reply = "I understand your invitation and continue the established moment from my own perspective.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
 });
 
 test("spicy mode removes generic false-consent refusals from recent context", () => {

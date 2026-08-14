@@ -26,6 +26,7 @@ test("style guidance translates extracted metrics", () => {
   assert.match(guidance, /near 12 words/);
   assert.match(guidance, /emoji occasionally/);
   assert.match(guidance, /question frequently/);
+  assert.match(guidance, /do not force a question every turn/);
   assert.match(guidance, /hey you/);
 });
 

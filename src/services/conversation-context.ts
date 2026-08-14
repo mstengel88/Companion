@@ -66,5 +66,5 @@ export function styleGuidance(style: StyleProfile | null) {
   const questions = style.questionRate < 0.2 ? "infrequently" : style.questionRate < 0.55 ? "sometimes" : "frequently";
   const target = Math.max(4, Math.round(style.averageWords));
   const openers = style.commonOpeners.length ? `Natural opening tendencies from the import: ${style.commonOpeners.join(", ")}. Do not repeat one mechanically.` : "";
-  return `Imported writing-style guidance: aim near ${target} words when context permits; use emoji ${emoji}; ask a question ${questions}. ${openers}`.trim();
+  return `Imported writing-style guidance: aim near ${target} words when context permits; use emoji ${emoji}; ask a question ${questions}. In an ongoing roleplay scene, continuity and natural action take priority over this question-rate estimate; do not force a question every turn. ${openers}`.trim();
 }
