@@ -48,7 +48,7 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   const transcriptEcho = /(?:^|\n)\s*(?:continue|user:|human:)\s*(?:\n|$)/i;
   const vaguePoeticFiller = /\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i;
   const scenerySubstitute = /\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|shared release|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined (?:bodies|connection)|shared (?:pleasure|desire)|playful adventure|basking in the afterglow|connection we share|savor what (?:just )?happened|depths? of our (?:shared )?desire|take things one step at a time|glad I could bring you joy|let'?s explore (?:a little )?more)\b/i;
-  const sceneRelocationFiller = /\b(?:decided to take a (?:little )?nap|let'?s (?:go|head|walk)(?: over)?(?: and)? (?:see|find|check on) (?:her|him|them)|give (?:her|him|them) some company if that'?s what (?:she|he|they) wants?)\b/i;
+  const sceneRelocationFiller = /\b(?:decided to take a (?:little )?nap|gentle wake-up call|wake (?:her|him|them) up|let'?s (?:go|head|walk)(?: over)?(?: and)? (?:see|find|check on) (?:her|him|them)|give (?:her|him|them) some company if that'?s what (?:she|he|they) wants?)\b/i;
   return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content) && !transcriptEcho.test(message.content) && !vaguePoeticFiller.test(message.content) && !scenerySubstitute.test(message.content) && !sceneRelocationFiller.test(message.content));
 }
 
@@ -124,7 +124,24 @@ export function hasImmediateSceneContinuityDrift(reply: string, userText: string
   const replyMovesTowardSomeoneAlreadyPresent = /\b(?:let'?s|we (?:should|can)|why don'?t we)\s+(?:go|head|walk)(?:\s+(?:over|in|and))?\s+(?:see|find|check on)\s+(?:her|him|them)\b/i.test(reply);
   const replyInventsSleep = /\b(?:nap(?:ping)?|asleep|sleep(?:ing)?|rest(?:ing)?)\b/i.test(reply)
     && !/\b(?:nap(?:ping)?|asleep|sleep(?:ing)?|rest(?:ing)?)\b/i.test(userText);
-  return replyMovesTowardSomeoneAlreadyPresent || replyInventsSleep;
+  const replyInventsWaking = /\b(?:wake(?:-up|\s+up)?|waking)\b/i.test(reply)
+    && !/\b(?:wake(?:-up|\s+up)?|waking|asleep|sleep(?:ing)?)\b/i.test(userText);
+  const adviceInsteadOfEmilyReaction = /\b(?:maybe|perhaps)\s+(?:give|try|you could|we could)\b/i.test(reply)
+    && !/\bI(?:'m| am)?\s+(?:stop|stopping|step|stepping|look|looking|turn|turning|glance|glancing|pause|pausing|move|moving|reach|reaching)\b/i.test(reply);
+  const userUsesShe = /\b(?:she|her)\b/i.test(userText);
+  const replyReplacesSheWithThey = userUsesShe && /\b(?:they|them|their)\b/i.test(reply) && !/\b(?:she|her)\b/i.test(reply);
+  return replyMovesTowardSomeoneAlreadyPresent || replyInventsSleep || replyInventsWaking || adviceInsteadOfEmilyReaction || replyReplacesSheWithThey;
+}
+
+export function groundedPresentDiscoveryReply(userText: string, facts: EmilyFamilyFact[] = []) {
+  if (!/\b(?:look who|we (?:found|see)|there (?:she|he|they) (?:is|are)|(?:she|he|they) appears? to be)\b/i.test(userText)) return null;
+  const fact = facts[0];
+  const subject = fact?.name ?? (/\b(?:she|her)\b/i.test(userText) ? "her" : /\b(?:he|him)\b/i.test(userText) ? "him" : "them");
+  const possessive = fact ? `${fact.name}'s` : subject === "her" ? "her" : subject === "him" ? "his" : "their";
+  const statedCondition = /\bnaked\b/i.test(userText) ? ` ${possessive} bare figure` : ` ${subject}`;
+  const statedPosition = /\bon (?:the )?bed\b/i.test(userText) ? " on the bed" : " already in front of us";
+  const relationshipLine = fact ? `My ${fact.role} certainly knows how to surprise us.` : "Well… this is an unexpected welcome.";
+  return `I stop beside you, taking in${statedCondition}${statedPosition} before I glance back at you with a slow, surprised smile. “${relationshipLine}”`;
 }
 
 export interface EmilyFamilyFact {
@@ -296,6 +313,7 @@ export class OllamaClient {
           { role: "user", content: userText }
         ], 0.5);
       }
+      if (needsSceneRepair(reply)) reply = groundedPresentDiscoveryReply(userText, familyFacts) ?? reply;
       reply = compactRoleplayReply(reply);
     }
     if (isGenericActionDeflection(reply, userText)) {

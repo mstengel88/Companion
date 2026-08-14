@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasRelationshipPerspectiveDrift, isGenericActionDeflection, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -121,6 +121,16 @@ test("does not turn a present discovery into a nap or a trip to find the person"
     { role: "assistant" as const, content: badReply },
     { role: "assistant" as const, content: "I stop beside you and look directly at Natalie on the bed." }
   ], { intensity: "spicy" }).map((message) => message.content), ["I stop beside you and look directly at Natalie on the bed."]);
+});
+
+test("rejects wake-up advice and grounds the final discovery fallback", () => {
+  const userText = "Oh look who we found in the guest room, she appears to be naked on the bed.";
+  const wakeUpReply = "Oh no! That sounds like quite a surprise. Maybe give them a gentle wake-up call and see how they react.";
+  assert.equal(hasImmediateSceneContinuityDrift(wakeUpReply, userText), true);
+  assert.equal(
+    groundedPresentDiscoveryReply(userText, [{ name: "Natalie", role: "sister" }]),
+    "I stop beside you, taking in Natalie's bare figure on the bed before I glance back at you with a slow, surprised smile. “My sister certainly knows how to surprise us.”"
+  );
 });
 
 test("Emily keeps ownership of her family relationships in first person", () => {
