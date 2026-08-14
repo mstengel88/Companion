@@ -1,6 +1,6 @@
 {
   "name": "ai-companion-emily-v4",
-  "version": "5.6.1",
+  "version": "5.6.2",
   "private": true,
   "description": "A local-first fictional AI companion with Ollama and generic ComfyUI integration",
   "type": "module",
