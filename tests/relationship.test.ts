@@ -87,3 +87,14 @@ test("does not elevate an ordinary warm or flirty conversation", () => {
     "We should plan it."
   ), { intensity: "warm" });
 });
+
+test("a clear intimate euphemism activates spicy handling without older context", () => {
+  const userText = "I push my hips into you so you can feel me poke you, what do you think love?";
+  const relationship = effectiveRelationshipForConversation([], { intensity: "flirty" }, userText);
+  assert.equal(relationship.intensity, "spicy");
+  assert.equal(isSpicyIntentDeflection(
+    "Let's make sure we're both comfortable and explore some gentle mutual stretching first.",
+    userText,
+    relationship
+  ), true);
+});

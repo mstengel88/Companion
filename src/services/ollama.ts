@@ -46,6 +46,7 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
 }
 
 const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|boobs?|breasts?|nude|naked|erect|penis|vagina|oral|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
+const intimateEuphemism = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
 
 export function effectiveRelationshipForConversation<T extends Pick<Message, "role" | "content">>(
   messages: T[],
@@ -54,14 +55,15 @@ export function effectiveRelationshipForConversation<T extends Pick<Message, "ro
 ): RelationshipSettings {
   if (relationship.intensity === "spicy") return relationship;
   const recentContext = messages.slice(-12).map((message) => message.content).join("\n");
-  return explicitAdultContext.test(`${recentContext}\n${userText}`) ? { intensity: "spicy" } : relationship;
+  return explicitAdultContext.test(`${recentContext}\n${userText}`) || intimateEuphemism.test(userText)
+    ? { intensity: "spicy" }
+    : relationship;
 }
 
 export function isSpicyIntentDeflection(reply: string, userText: string, relationship: RelationshipSettings) {
   if (relationship.intensity !== "spicy") return false;
-  const euphemisticIntent = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
-  if (!explicitAdultContext.test(userText) && !euphemisticIntent.test(userText)) return false;
-  return /\b(?:breath(?:e|ing)?|exhale|yoga|stretch|relaxation|gentle exploration|different topic|plan an adventure)\b/i.test(reply);
+  if (!explicitAdultContext.test(userText) && !intimateEuphemism.test(userText)) return false;
+  return /\b(?:breath(?:e|ing)?|exhale|yoga|stretch(?:ing)?|relaxation|gentle exploration|different topic|plan an adventure)\b/i.test(reply);
 }
 
 export class OllamaClient {
