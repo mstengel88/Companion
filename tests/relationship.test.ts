@@ -58,6 +58,11 @@ test("detects canned acknowledgment instead of scene action", () => {
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
 });
 
+test("detects a vague scene reset that invents taking off layers", () => {
+  const reply = "Let's continue our intimate exploration. I'll start by unzipping your jacket.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+});
+
 test("allows massage and cuddling when they are a direct natural continuation", () => {
   const reply = "I settle into your arms and return the slow massage, relaxing into a warm cuddle with you.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
@@ -77,6 +82,7 @@ test("spicy mode removes canned repairs and evasive option replies from history"
   const messages = [
     { role: "assistant" as const, content: "I understand your invitation, love. I pull you closer and take the initiative, letting my playful side lead." },
     { role: "assistant" as const, content: "Let's explore intimate positions. How about a back massage or a cozy cuddle? What do you think?" },
+    { role: "assistant" as const, content: "Our fantasies are dancing together. Let's take off some layers and feel even more connected." },
     { role: "assistant" as const, content: "I settle into your arms and return the slow massage you asked for." }
   ];
   const filtered = spicySafeHistory(messages, { intensity: "spicy" });

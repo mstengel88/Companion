@@ -43,6 +43,15 @@ test("conversation window keeps the newest bounded messages in order", () => {
   assert.match(window.continuity, /message 17/);
 });
 
+test("default conversation window keeps a long sequence of short roleplay turns", () => {
+  const history: Message[] = Array.from({ length: 30 }, (_, index) => ({
+    id: String(index), role: index % 2 ? "assistant" : "user", content: `short scene action ${index}`, createdAt: new Date().toISOString()
+  }));
+  const window = buildConversationWindow(history);
+  assert.equal(window.messages.length, 30);
+  assert.equal(window.omittedMessages, 0);
+});
+
 test("conversation window respects its character budget", () => {
   const history: Message[] = [
     { id: "1", role: "user", content: "a".repeat(80), createdAt: new Date().toISOString() },

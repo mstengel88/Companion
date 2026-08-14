@@ -21,7 +21,7 @@ function compactExcerpt(text: string, limit = 220) {
   return clean.length <= limit ? clean : `${clean.slice(0, limit - 1).trimEnd()}…`;
 }
 
-export function buildConversationWindow(history: Message[], maxMessages = 16, maxCharacters = 12_000): ConversationWindow {
+export function buildConversationWindow(history: Message[], maxMessages = 40, maxCharacters = 12_000): ConversationWindow {
   const eligible = history.filter((message) => message.role === "user" || message.role === "assistant");
   const selected: Message[] = [];
   let characters = 0;
