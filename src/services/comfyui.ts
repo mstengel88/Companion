@@ -61,6 +61,7 @@ export class ImageService {
     const workflowPath = path.resolve(this.root, profile.workflowFile);
     const workflow = JSON.parse(await readFile(workflowPath, "utf8")) as unknown;
     const reference = request.referenceSlot ? await this.resolveReference(request.referenceSlot) : "";
+    if (reference) await this.uploadReference(reference);
     const replacements: Record<string, string | number> = {
       "__COMPANION_PROMPT__": prompt,
       "__COMPANION_NEGATIVE__": "minor, child, teenager, low quality, distorted anatomy, extra fingers, watermark, text",
@@ -145,9 +146,23 @@ export class ImageService {
     const entries = await import("node:fs/promises").then((fs) => fs.readdir(this.referencesDir));
     const file = entries.find((name) => name.startsWith(slot));
     if (!file) return "";
-    // ComfyUI must have access to the same filename. A deployment may map this
-    // directory into ComfyUI/input or sync it independently.
     return file;
+  }
+
+  private async uploadReference(filename: string) {
+    const ext = path.extname(filename).toLowerCase();
+    const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    const contents = await readFile(path.join(this.referencesDir, filename));
+    const form = new FormData();
+    form.append("image", new Blob([contents], { type: mimeType }), filename);
+    form.append("type", "input");
+    form.append("overwrite", "true");
+    const response = await fetch(`${this.comfyUrl}/upload/image`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(30_000)
+    });
+    if (!response.ok) throw new Error(`ComfyUI reference upload returned ${response.status}: ${await response.text()}`);
   }
 
   async health() {
