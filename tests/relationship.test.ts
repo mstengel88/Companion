@@ -22,6 +22,8 @@ test("roleplay voice is action-first and preserves concrete continuity", () => {
   assert.match(guidance, /without forcing escalation or retreat/);
   assert.match(guidance, /only Emily's current turn/);
   assert.match(guidance, /body ownership literally/);
+  assert.match(guidance, /Control only Emily's actions/);
+  assert.match(guidance, /Advance by one immediate beat/);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {
@@ -74,6 +76,11 @@ test("truncates a model-generated user turn and second assistant response", () =
 test("detects vague poetic filler in place of concrete scene action", () => {
   const reply = "Your words stir something within me, and our breaths mingle as the heat intensifies.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+});
+
+test("detects invented movement or a shared position for the user", () => {
+  assert.equal(isSpicySceneStyleDrift("Your hips match mine in rhythm as our bodies press together.", { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift("I keep my hand steady where you placed it and shift my weight beside you.", { intensity: "spicy" }, true), false);
 });
 
 test("allows massage and cuddling when they are a direct natural continuation", () => {
