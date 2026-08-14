@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -16,7 +16,7 @@ test("flirty mode allows suggestion without graphic detail", () => {
 test("roleplay voice is action-first and preserves concrete continuity", () => {
   const guidance = roleplayWritingGuidance();
   assert.match(guidance, /exact physical moment/);
-  assert.match(guidance, /one to three sentences/);
+  assert.match(guidance, /one or two sentences/);
   assert.match(guidance, /location, posture, clothing, props/);
   assert.match(guidance, /at most one brief question/);
   assert.match(guidance, /without forcing escalation or retreat/);
@@ -26,6 +26,8 @@ test("roleplay voice is action-first and preserves concrete continuity", () => {
   assert.match(guidance, /small, plausible immediate movement, sensation, or emotional reaction/);
   assert.match(guidance, /Do not write the user's dialogue or make major decisions/);
   assert.match(guidance, /Advance by one immediate beat/);
+  assert.match(guidance, /grounded, everyday language/);
+  assert.match(guidance, /multi-paragraph montage/);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {
@@ -82,6 +84,18 @@ test("truncates a model-generated user turn and second assistant response", () =
 test("detects vague poetic filler in place of concrete scene action", () => {
   const reply = "Your words stir something within me, and our breaths mingle as the heat intensifies.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+});
+
+test("detects runaway purple prose and multiple invented user beats", () => {
+  const reply = "Your words are like fire, lighting desire within me. As you reach for my neck, your fingers trace patterns over my skin and you let out a moan. Our heartbeats sync as the world fades away into our private universe.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
+});
+
+test("compacts a repaired roleplay draft to two sentences and a hard word ceiling", () => {
+  assert.equal(compactRoleplayReply("I shift closer. I rest my hand at your waist. Then the scene races ahead."), "I shift closer. I rest my hand at your waist.");
+  const compact = compactRoleplayReply(Array.from({ length: 60 }, (_, index) => `word${index}`).join(" "));
+  assert.equal(compact.split(/\s+/).length, 48);
+  assert.match(compact, /…$/);
 });
 
 test("allows plausible collaborative narration of an immediate shared reaction", () => {

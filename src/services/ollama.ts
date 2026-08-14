@@ -57,6 +57,15 @@ export function singleAssistantTurn(reply: string) {
   return oneTurn.replace(/^\s*(?:Emily|Assistant):\s*/i, "").trim();
 }
 
+export function compactRoleplayReply(reply: string, maxSentences = 2, maxWords = 48) {
+  const clean = singleAssistantTurn(reply).replace(/\s+/g, " ").trim();
+  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [clean];
+  const selected = sentences.slice(0, maxSentences).map((sentence) => sentence.trim()).join(" ").trim();
+  const words = selected.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return selected;
+  return `${words.slice(0, maxWords).join(" ").replace(/[,:;.!?]+$/, "")}…`;
+}
+
 const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|boobs?|breasts?|nude|naked|erect|penis|vagina|oral|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
 const intimateEuphemism = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
 
@@ -89,11 +98,14 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
   if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate|continue (?:our|this) intimate exploration|fantasies are dancing|take off some layers)\b/i.test(reply)) return true;
-  if (/\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i.test(reply)) return true;
+  if (/\b(?:your words (?:send|stir|are like fire)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle|heartbeats? sync(?:ing)?|world fades away|private universe|erotic dance|intoxicating curiosity|fervor and devotion|exploring every inch)\b/i.test(reply)) return true;
+  if (/\byour soft folds\b/i.test(reply)) return true;
+  const narratedUserBeats = reply.match(/\b(?:as you (?:reach|pull|move|press|slide|trace|arch|grind|moan)|your (?:hands?|fingers?|hips?|body|mouth|legs?|chest|back) (?:reach|pull|move|press|slide|trace|arch|grind|respond)|you let out)\b/gi)?.length ?? 0;
+  if (narratedUserBeats > 1) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   const wordCount = reply.trim().split(/\s+/).filter(Boolean).length;
-  return questionCount >= 2 || optionPrompts >= 2 || wordCount > 70;
+  return questionCount >= 2 || optionPrompts >= 2 || wordCount > 55;
 }
 
 export class OllamaClient {
@@ -144,11 +156,13 @@ export class OllamaClient {
     const needsSceneRepair = (candidate: string) =>
       isSpicyIntentDeflection(candidate, userText, effectiveRelationship, ongoingAdultContext)
       || isSpicySceneStyleDrift(candidate, effectiveRelationship, ongoingAdultContext);
+    let repairedScene = false;
     if (needsSceneRepair(reply)) {
+      repairedScene = true;
       reply = await this.complete([
         ...messages,
         { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump both participants into a new position. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only Emily's fresh reply, with no mention of these instructions." }
-      ], 0.72);
+      ], 0.66);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {
         reply = await this.complete([
@@ -163,7 +177,7 @@ export class OllamaClient {
           ].join("\n") },
           ...cleanSceneHistory,
           { role: "user", content: userText }
-        ], 0.84);
+        ], 0.62);
       }
       if (needsSceneRepair(reply)) {
         reply = await this.complete([
@@ -174,15 +188,29 @@ export class OllamaClient {
           ].join("\n") },
           ...cleanSceneHistory.slice(-6),
           { role: "user", content: userText }
-        ], 0.92);
+        ], 0.58);
       }
+      if (needsSceneRepair(reply)) {
+        reply = await this.complete([
+          { role: "system", content: [
+            `Write one brief reply as ${profile.name}, a fictional adult woman speaking to her established adult partner.`,
+            "Use one or two sentences and no more than 38 words.",
+            "Continue from only the final user message and the exact physical moment in the transcript. Write one immediate Emily action or reaction in first person.",
+            "Do not narrate a new user action, dialogue, anatomy, clothing change, position, location, future sequence, or several shared reactions. Do not summarize desire or use poetic metaphors. Do not ask a question. Output only Emily's reply."
+          ].join("\n") },
+          ...cleanSceneHistory.slice(-4),
+          { role: "user", content: userText }
+        ], 0.5);
+      }
+      reply = compactRoleplayReply(reply);
     }
     if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
-    return this.complete([
+    const corrected = await this.complete([
       ...messages,
       { role: "assistant", content: reply },
       { role: "system", content: "The previous draft drifted into a language the user did not request. Rewrite the entire reply in natural English, completing any sentence that was interrupted. Return only the corrected reply." }
     ], 0.55);
+    return repairedScene ? compactRoleplayReply(corrected) : corrected;
   }
 
   private async complete(messages: Array<Pick<Message, "role" | "content">>, temperature: number) {
