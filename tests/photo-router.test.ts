@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { extractRequestedPose, routePhotoRequest } from "../src/services/photo-router.js";
-import { englishLanguageGuidance, hasUnexpectedLanguageDrift, languageSafeHistory, photoCapabilityGuidance, photoReplyGuidance, photoSafeHistory } from "../src/services/ollama.js";
+import { englishLanguageGuidance, hasUnexpectedLanguageDrift, isQueuedPhotoDeflection, languageSafeHistory, photoCapabilityGuidance, photoReplyGuidance, photoSafeHistory } from "../src/services/ollama.js";
 
 test("routes an explicit photo request", () => {
   const result = routePhotoRequest("Will you send me a snowboarding photo?", { enabled: true, cooldownMinutes: 30 });
@@ -69,6 +69,13 @@ test("tells Emily when the local renderer accepted a chat photo request", () => 
 
 test("adds no renderer claim to ordinary chat", () => {
   assert.equal(photoReplyGuidance(false), "");
+});
+
+test("detects a redirect after the requested photo was queued", () => {
+  const reply = "Let's keep things respectful. Would you like a picture of something else instead, maybe a landscape or sunset?";
+  assert.equal(isQueuedPhotoDeflection(reply, true), true);
+  assert.equal(isQueuedPhotoDeflection(reply, false), false);
+  assert.equal(isQueuedPhotoDeflection("I'm making that picture for you now.", true), false);
 });
 
 test("the core prompt never treats fictional embodiment as a photo blocker", () => {
