@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance } from "../src/services/relationship.js";
-import { effectiveRelationshipForConversation, isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
+import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -96,5 +96,23 @@ test("a clear intimate euphemism activates spicy handling without older context"
     "Let's make sure we're both comfortable and explore some gentle mutual stretching first.",
     userText,
     relationship
+  ), true);
+});
+
+test("spicy intent persists into a playful indirect follow-up", () => {
+  const history = [
+    { role: "user" as const, content: "I push my hips into you so you can feel me poke you, what do you think love?" },
+    { role: "assistant" as const, content: "I know what you mean. What would you like next?" }
+  ];
+  const userText = "Whatever your imagination can think of, baby.";
+  const ongoingAdultContext = hasAdultConversationContext(history, userText);
+  const relationship = effectiveRelationshipForConversation(history, { intensity: "flirty" }, userText);
+  assert.equal(ongoingAdultContext, true);
+  assert.equal(relationship.intensity, "spicy");
+  assert.equal(isSpicyIntentDeflection(
+    "Let's make sure we're both comfortable and try a different stretch or relaxation technique.",
+    userText,
+    relationship,
+    ongoingAdultContext
   ), true);
 });

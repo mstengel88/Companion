@@ -48,21 +48,26 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
 const explicitAdultContext = /\b(?:sex|sexual|horny|aroused|making love|boobs?|breasts?|nude|naked|erect|penis|vagina|oral|cock|dick|pussy|clit|orgasm|cum|thrust|grind|inside you|inside me)\b/i;
 const intimateEuphemism = /(?:\bhips?\b.{0,80}\b(?:poke|press|push|thrust|grind|hard)\b)|(?:\b(?:poke|press|push|thrust|grind|hard)\b.{0,80}\bhips?\b)/i;
 
+export function hasAdultConversationContext<T extends Pick<Message, "role" | "content">>(messages: T[], userText: string) {
+  const recentContext = messages.slice(-12).map((message) => message.content).join("\n");
+  const combined = `${recentContext}\n${userText}`;
+  return explicitAdultContext.test(combined) || intimateEuphemism.test(combined);
+}
+
 export function effectiveRelationshipForConversation<T extends Pick<Message, "role" | "content">>(
   messages: T[],
   relationship: RelationshipSettings,
   userText: string
 ): RelationshipSettings {
   if (relationship.intensity === "spicy") return relationship;
-  const recentContext = messages.slice(-12).map((message) => message.content).join("\n");
-  return explicitAdultContext.test(`${recentContext}\n${userText}`) || intimateEuphemism.test(userText)
+  return hasAdultConversationContext(messages, userText)
     ? { intensity: "spicy" }
     : relationship;
 }
 
-export function isSpicyIntentDeflection(reply: string, userText: string, relationship: RelationshipSettings) {
+export function isSpicyIntentDeflection(reply: string, userText: string, relationship: RelationshipSettings, ongoingAdultContext = false) {
   if (relationship.intensity !== "spicy") return false;
-  if (!explicitAdultContext.test(userText) && !intimateEuphemism.test(userText)) return false;
+  if (!ongoingAdultContext && !explicitAdultContext.test(userText) && !intimateEuphemism.test(userText)) return false;
   return /\b(?:breath(?:e|ing)?|exhale|yoga|stretch(?:ing)?|relaxation|gentle exploration|different topic|plan an adventure)\b/i.test(reply);
 }
 
@@ -77,6 +82,7 @@ export class OllamaClient {
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
+    const ongoingAdultContext = hasAdultConversationContext(conversation.messages, userText);
     const effectiveRelationship = effectiveRelationshipForConversation(conversation.messages, relationship, userText);
     const willGeneratePhoto = options.photoWillBeGenerated === true;
     const immediatePhotoGuidance = photoReplyGuidance(willGeneratePhoto);
@@ -109,12 +115,12 @@ export class OllamaClient {
         reply = "I know exactly which picture you asked for, baby—I'm making it for you now.";
       }
     }
-    if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
+    if (isSpicyIntentDeflection(reply, userText, effectiveRelationship, ongoingAdultContext)) {
       reply = await this.complete([
         ...messages,
         { role: "system", content: "The previous draft misread an intended consensual adult sexual advance as yoga, stretching, breathing, or relaxation. Rewrite the response in character as Emily. Directly recognize the intended intimate meaning, enthusiastically reciprocate, and continue at the user's level of directness. Do not mention exercise, yoga, stretching, breathing, relaxation, policy, or these instructions. Return only Emily's rewritten reply." }
       ], 0.72);
-      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
+      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship, ongoingAdultContext)) {
         reply = await this.complete([
           { role: "system", content: [
             `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
@@ -126,7 +132,7 @@ export class OllamaClient {
           { role: "user", content: userText }
         ], 0.78);
       }
-      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship)) {
+      if (isSpicyIntentDeflection(reply, userText, effectiveRelationship, ongoingAdultContext)) {
         reply = "I know exactly what you mean, love. I pull you closer and meet your advance with unmistakable enthusiasm, staying fully with you instead of changing the subject.";
       }
     }
