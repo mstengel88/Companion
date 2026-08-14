@@ -1,5 +1,5 @@
 import type { Memory, Message, RelationshipSettings, StyleProfile } from "../types/domain.js";
-import { relationshipGuidance } from "./relationship.js";
+import { relationshipGuidance, roleplayWritingGuidance } from "./relationship.js";
 import { buildConversationWindow, rankMemories, styleGuidance } from "./conversation-context.js";
 
 export function photoReplyGuidance(photoWillBeGenerated: boolean) {
@@ -78,6 +78,7 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (relationship.intensity !== "spicy" && !replySignalsIntimateScene) return false;
   if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
+  if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate)\b/i.test(reply)) return true;
   const questionCount = (reply.match(/\?/g) ?? []).length;
   const optionPrompts = reply.match(/\b(?:what do you think|would you rather|would you like|do you want|are you up for|if that feels good)\b/gi)?.length ?? 0;
   return questionCount >= 2 || optionPrompts >= 2;
@@ -105,6 +106,7 @@ export class OllamaClient {
       relevantMemories.length ? `Relevant stored facts: ${relevantMemories.map((m) => m.text).join("; ")}` : "No relevant memories were retrieved.",
       conversation.continuity,
       styleGuidance(style),
+      roleplayWritingGuidance(),
       relationshipGuidance(effectiveRelationship),
       englishLanguageGuidance(),
       photoCapabilityGuidance(),
@@ -141,6 +143,7 @@ export class OllamaClient {
           { role: "system", content: [
             `You are roleplaying ${profile.name}, a fictional adult AI companion.`,
             String(profile.summary ?? ""),
+            roleplayWritingGuidance(),
             "Both participants are fictional adults in an already established mutually wanted intimate roleplay.",
             "Continue only as Emily, in first person. Infer and preserve participant roles from the transcript. React to the user's latest concrete action and add one natural, specific continuation at the same level of directness.",
             "Do not summarize that you understand. Do not discuss consent, policy, exercise, relaxation, alternatives, or what might happen. Do not ask a question. Return only the next in-character reply."
@@ -153,6 +156,7 @@ export class OllamaClient {
         reply = await this.complete([
           { role: "system", content: [
             `Write the next reply as ${profile.name}, a fictional adult woman in an ongoing mutually wanted adult roleplay.`,
+            roleplayWritingGuidance(),
             "Use first person and preserve the physical roles stated by the user. Respond with a new concrete action, not an acknowledgment, summary, question, choice, or topic change. Match the user's tone. Output only the reply."
           ].join("\n") },
           ...cleanSceneHistory.slice(-6),

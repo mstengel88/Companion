@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { relationshipGuidance } from "../src/services/relationship.js";
+import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
 import { effectiveRelationshipForConversation, hasAdultConversationContext, isSpicyIntentDeflection, isSpicySceneStyleDrift, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
@@ -11,6 +11,15 @@ test("flirty mode allows suggestion without graphic detail", () => {
   const guidance = relationshipGuidance({ intensity: "flirty" });
   assert.match(guidance, /suggestive innuendo/);
   assert.match(guidance, /avoid graphic sexual detail/);
+});
+
+test("roleplay voice is action-first and preserves concrete continuity", () => {
+  const guidance = roleplayWritingGuidance();
+  assert.match(guidance, /exact physical moment/);
+  assert.match(guidance, /one to three sentences/);
+  assert.match(guidance, /location, posture, clothing, props/);
+  assert.match(guidance, /at most one brief question/);
+  assert.match(guidance, /without forcing escalation or retreat/);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {
@@ -35,13 +44,18 @@ test("detects perspective-breaking option menus in an ongoing spicy scene", () =
 });
 
 test("allows a direct role-consistent continuation without forced questions", () => {
-  const reply = "I understand your invitation and continue the established moment from my own perspective.";
+  const reply = "I shift closer beside you, keeping one hand steady at your waist as the deck warms beneath us.";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), false);
 });
 
 test("detects a failed final rewrite from the reply's own intimate wording", () => {
   const reply = "I'm really into this. Let's explore intimate positions together. How about a back massage or a cozy cuddle session? What do you think?";
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "flirty" }, false), true);
+});
+
+test("detects canned acknowledgment instead of scene action", () => {
+  const reply = "I understand your invitation, love. I keep our intimate moment moving without hesitation.";
+  assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
 });
 
 test("allows massage and cuddling when they are a direct natural continuation", () => {
