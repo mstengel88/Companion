@@ -60,7 +60,7 @@ test("uploads a stored reference to ComfyUI before queueing the workflow", async
     placeholders: {}, capabilities: { referenceImage: true, poseControl: false, controlImage: false }
   };
   const service = new ImageService("http://comfy.test", root, references, photos);
-  const result = await service.generate({ scene: "winter lodge", referenceSlot: "emily-reference-1" }, profile);
+  const result = await service.generate({ scene: "winter lodge" }, profile);
   assert.equal(result.comfyPromptId, "prompt-1");
   assert.deepEqual(calls, ["http://comfy.test/upload/image", "http://comfy.test/prompt"]);
 });

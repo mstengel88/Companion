@@ -52,7 +52,7 @@
           <label>Camera<input name="camera" placeholder="casual phone photo" /></label>
           <label>Emily reference<select id="photo-reference" name="referenceSlot"><option value="">No reference</option></select></label>
           <label>Pose/control image<input name="poseImage" placeholder="optional ComfyUI input filename" /></label>
-          <label>Control strength<input name="controlStrength" type="number" min="0" max="2" step="0.05" value="0.75" /></label>
+          <label>Control strength<input name="controlStrength" type="number" min="0" max="2" step="0.05" value="0.85" /></label>
           <button class="wide">Queue photo</button>
         </form>
         <div id="photo-list" class="cards"></div>
@@ -77,6 +77,7 @@
       </section>
     </main>
   </div>
+  <button id="jump-latest" class="jump-latest" type="button" hidden aria-label="Jump to the latest message">↓ Latest</button>
   <div id="toast" role="status"></div>
   <script type="module" src="/app.js"></script>
 </body>

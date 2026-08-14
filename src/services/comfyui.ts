@@ -60,7 +60,7 @@ export class ImageService {
     if (!profile.workflowFile) throw new Error(`Workflow profile ${profile.id} has no workflowFile`);
     const workflowPath = path.resolve(this.root, profile.workflowFile);
     const workflow = JSON.parse(await readFile(workflowPath, "utf8")) as unknown;
-    const reference = request.referenceSlot ? await this.resolveReference(request.referenceSlot) : "";
+    const reference = profile.capabilities.referenceImage ? await this.resolveReference(request.referenceSlot) : "";
     if (reference) await this.uploadReference(reference);
     const replacements: Record<string, string | number> = {
       "__COMPANION_PROMPT__": prompt,
@@ -70,7 +70,7 @@ export class ImageService {
       "__COMPANION_HEIGHT__": request.height ?? 1216,
       "__COMPANION_REFERENCE_IMAGE__": reference,
       "__COMPANION_POSE_IMAGE__": request.poseImage ?? "",
-      "__COMPANION_CONTROL_STRENGTH__": request.controlStrength ?? 0.75
+      "__COMPANION_CONTROL_STRENGTH__": request.controlStrength ?? 0.85
     };
     const response = await fetch(`${this.comfyUrl}/prompt`, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -142,9 +142,12 @@ export class ImageService {
     return { ...record, filename, status: "complete", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined };
   }
 
-  private async resolveReference(slot: string) {
+  private async resolveReference(slot?: string) {
     const entries = await import("node:fs/promises").then((fs) => fs.readdir(this.referencesDir));
-    const file = entries.find((name) => name.startsWith(slot));
+    const images = entries.filter((name) => /\.(png|jpe?g|webp)$/i.test(name));
+    const file = slot
+      ? images.find((name) => name.startsWith(slot))
+      : images.find((name) => name.startsWith("emily-reference-1")) ?? images[0];
     if (!file) return "";
     return file;
   }

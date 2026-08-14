@@ -1,4 +1,4 @@
-const CACHE = "emily-shell-v5.6.4";
+const CACHE = "emily-shell-v5.6.5";
 const SHELL = ["/", "/styles.css", "/app.js", "/manifest.webmanifest", "/emily-icon.svg"];
 
 self.addEventListener("install", (event) => {

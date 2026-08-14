@@ -4,7 +4,7 @@
   "description": "Example profile. Export an API-format ComfyUI graph and set workflowFile to it.",
   "mode": "comfyui",
   "workflowFile": "config/workflows/local-workflow-api.json",
-  "outputNode": "save-image-node-id",
+  "outputNode": "10",
   "placeholders": {
     "prompt": "__COMPANION_PROMPT__",
     "negative": "__COMPANION_NEGATIVE__",

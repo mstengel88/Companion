@@ -189,7 +189,9 @@ app.get("/api/photos", async (_req, res) => {
   const refreshed = await Promise.all(state.photos.map(async (photo) => {
     try { return await images.refresh(photo, queue); } catch { return photo; }
   }));
-  await store.update((current) => { current.photos = refreshed; });
+  if (JSON.stringify(refreshed) !== JSON.stringify(state.photos)) {
+    await store.update((current) => { current.photos = refreshed; });
+  }
   res.json(refreshed);
 });
 
