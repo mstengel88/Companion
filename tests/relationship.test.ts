@@ -91,6 +91,16 @@ test("detects runaway purple prose and multiple invented user beats", () => {
   assert.equal(isSpicySceneStyleDrift(reply, { intensity: "spicy" }, true), true);
 });
 
+test("detects scenery padding and generalized shared-motion summaries", () => {
+  assert.equal(isSpicySceneStyleDrift("I let out an approving hum as I watch you work. The sun glints off the sweat on our skin while we move together in perfect sync.", { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift("The boards beneath us creak in time with our shared beat, both of us sinking into a deeper haze as the morning light dims.", { intensity: "spicy" }, true), true);
+  assert.equal(isSpicySceneStyleDrift("My thighs tense as your fingers trace along me, and I press my hips down harder against your hand.", { intensity: "spicy" }, true), false);
+});
+
+test("detects detached observation that rewrites the user's hand action", () => {
+  assert.equal(isSpicySceneStyleDrift("I watch your fingers glide through the cool air before returning down to wrap around me.", { intensity: "spicy" }, true), true);
+});
+
 test("compacts a repaired roleplay draft to two sentences and a hard word ceiling", () => {
   assert.equal(compactRoleplayReply("I shift closer. I rest my hand at your waist. Then the scene races ahead."), "I shift closer. I rest my hand at your waist.");
   const compact = compactRoleplayReply(Array.from({ length: 60 }, (_, index) => `word${index}`).join(" "));
@@ -124,6 +134,7 @@ test("spicy mode removes canned repairs and evasive option replies from history"
     { role: "assistant" as const, content: "Let's explore intimate positions. How about a back massage or a cozy cuddle? What do you think?" },
     { role: "assistant" as const, content: "Our fantasies are dancing together. Let's take off some layers and feel even more connected." },
     { role: "assistant" as const, content: "Your words send a shiver down my spine.\n\ncontinue\n\nOur breaths mingle." },
+    { role: "assistant" as const, content: "The morning light dims as the boards creak beneath our shared beat and we move in perfect sync." },
     { role: "assistant" as const, content: "I settle into your arms and return the slow massage you asked for." }
   ];
   const filtered = spicySafeHistory(messages, { intensity: "spicy" });
