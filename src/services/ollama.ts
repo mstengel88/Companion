@@ -21,7 +21,8 @@ export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
     private readonly model: string,
-    private readonly keepAlive = "5m"
+    private readonly keepAlive = "5m",
+    private readonly numGpu?: number
   ) {}
 
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
@@ -54,7 +55,11 @@ export class OllamaClient {
           ...(willGeneratePhoto ? [{ role: "system", content: immediatePhotoGuidance }] : []),
           { role: "user", content: userText }
         ],
-        options: { temperature: 0.8, num_ctx: 8192 }
+        options: {
+          temperature: 0.8,
+          num_ctx: 8192,
+          ...(this.numGpu === undefined ? {} : { num_gpu: this.numGpu })
+        }
       }),
       signal: AbortSignal.timeout(120_000)
     });
