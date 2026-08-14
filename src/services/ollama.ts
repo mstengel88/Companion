@@ -32,6 +32,12 @@ export function photoSafeHistory<T extends Pick<Message, "role" | "content">>(me
   return messages.filter((message) => message.role !== "assistant" || !falseCapabilityReply.test(message.content));
 }
 
+export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], relationship: RelationshipSettings): T[] {
+  if (relationship.intensity !== "spicy") return messages;
+  const genericFalseBoundary = /(?:\blet'?s (?:keep things consensual|take (?:a )?step back|focus on breathing|focus on relaxation)\b)|(?:\b(?:ensure|make sure) (?:that )?we(?:'re| are) both comfortable\b)|(?:\b(?:different topic|relaxation instead|plan an adventure)\b)/i;
+  return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content));
+}
+
 export class OllamaClient {
   constructor(
     private readonly baseUrl: string,
@@ -60,7 +66,7 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto),
+      ...spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), relationship),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
