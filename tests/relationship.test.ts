@@ -230,6 +230,14 @@ test("spicy mode removes canned repairs and evasive option replies from history"
   assert.deepEqual(filtered.map((message) => message.content), ["I settle into your arms and return the slow massage you asked for."]);
 });
 
+test("spicy mode removes old generic third-party facilitator replies", () => {
+  const messages = [
+    { role: "assistant" as const, content: "Oh, that's a fun development! Let's see where our adventure takes us next." },
+    { role: "assistant" as const, content: "I step to Natalie's other side and meet her eyes." }
+  ];
+  assert.deepEqual(spicySafeHistory(messages, { intensity: "spicy" }), [messages[1]]);
+});
+
 test("non-spicy modes preserve conversation history unchanged", () => {
   const messages = [{ role: "assistant" as const, content: "Let's take a step back." }];
   assert.equal(spicySafeHistory(messages, { intensity: "warm" }), messages);
