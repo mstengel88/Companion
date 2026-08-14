@@ -2,6 +2,7 @@ let data;
 let authState={required:false,authenticated:true};
 let rendererHealth;
 let referenceMenuInitialized=false;
+let workflowMenuInitialized=false;
 const knownMessageIds = new Set();
 let lastRenderedMessageId;
 let installPrompt;
@@ -38,6 +39,9 @@ function render(){
   const referenceSelect=$("#photo-reference");
   const signature=state.references.map(reference=>reference.id).join("|");
   if(referenceSelect.dataset.signature!==signature){const previous=referenceSelect.value;referenceSelect.innerHTML=`<option value="">No reference</option>${state.references.map(reference=>`<option value="${escapeHtml(reference.id)}">${escapeHtml(reference.id)}</option>`).join("")}`;referenceSelect.dataset.signature=signature;if(previous&&state.references.some(reference=>reference.id===previous))referenceSelect.value=previous;else if(!referenceMenuInitialized&&state.references[0])referenceSelect.value=state.references[0].id;referenceMenuInitialized=true;}
+  const workflowSelect=$("#photo-workflow");
+  const workflowSignature=data.workflows.map(workflow=>workflow.id).join("|");
+  if(workflowSelect.dataset.signature!==workflowSignature){const previous=workflowSelect.value;workflowSelect.innerHTML=data.workflows.filter(workflow=>workflow.mode!=="mock").map(workflow=>`<option value="${escapeHtml(workflow.id)}">${escapeHtml(workflow.name)}</option>`).join("");workflowSelect.dataset.signature=workflowSignature;if(previous&&data.workflows.some(workflow=>workflow.id===previous))workflowSelect.value=previous;else if(!workflowMenuInitialized)workflowSelect.value=data.selectedWorkflow;workflowMenuInitialized=true;}
   const renderer=$("#renderer-status");
   renderer.textContent=rendererHealth?.comfyui?.ok?`Renderer ready · ${rendererHealth.workflow}`:rendererHealth?"Renderer offline":"Checking renderer…";
   renderer.classList.toggle("ready",Boolean(rendererHealth?.comfyui?.ok));

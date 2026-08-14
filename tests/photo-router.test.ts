@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { routePhotoRequest } from "../src/services/photo-router.js";
+import { extractRequestedPose, routePhotoRequest } from "../src/services/photo-router.js";
 import { englishLanguageGuidance, hasUnexpectedLanguageDrift, languageSafeHistory, photoCapabilityGuidance, photoReplyGuidance, photoSafeHistory } from "../src/services/ollama.js";
 
 test("routes an explicit photo request", () => {
@@ -8,6 +8,22 @@ test("routes an explicit photo request", () => {
   assert.equal(result.route, true);
   assert.equal(result.reason, "explicit-request");
   assert.match(result.request?.scene ?? "", /snowboarding/);
+});
+
+test("extracts and expands cat pose from a chat photo request", () => {
+  const decision = routePhotoRequest("send me a photo of you in the cat pose", {
+    enabled: true,
+    cooldownMinutes: 30
+  });
+  assert.equal(decision.route, true);
+  assert.match(decision.request?.pose ?? "", /Marjaryasana/);
+  assert.match(decision.request?.pose ?? "", /hands and knees/);
+  assert.match(decision.request?.pose ?? "", /not sitting upright/);
+  assert.match(decision.request?.camera ?? "", /entire pose visible/);
+});
+
+test("extracts a generic named pose phrase", () => {
+  assert.equal(extractRequestedPose("make a picture doing the dancer pose please"), "dancer pose");
 });
 
 test("does not route ordinary chat", () => {

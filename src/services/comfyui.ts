@@ -17,9 +17,12 @@ export function locateQueueJob(snapshot: ComfyQueueSnapshot, promptId: string) {
 }
 
 function buildPrompt(request: PhotoRequest) {
+  const poseRequirement = request.pose
+    ? `POSE REQUIREMENT — follow exactly: ${request.pose}`
+    : undefined;
   return [
     "Emily, fictional 43-year-old adult woman",
-    request.scene, request.activity, request.outfit, request.pose,
+    poseRequirement, request.scene, request.activity, request.outfit,
     request.expression, request.camera, request.environment
   ].filter(Boolean).join(", ");
 }
@@ -59,9 +62,15 @@ export class ImageService {
     }
     if (!profile.workflowFile) throw new Error(`Workflow profile ${profile.id} has no workflowFile`);
     const workflowPath = path.resolve(this.root, profile.workflowFile);
-    const workflow = JSON.parse(await readFile(workflowPath, "utf8")) as unknown;
-    const reference = profile.capabilities.referenceImage ? await this.resolveReference(request.referenceSlot) : "";
+    const workflowRaw = await readFile(workflowPath, "utf8");
+    const workflow = JSON.parse(workflowRaw) as unknown;
+    const [reference, secondaryReference] = profile.capabilities.referenceImage
+      ? await this.resolveReferences(request.referenceSlot)
+      : ["", ""];
     if (reference) await this.uploadReference(reference);
+    if (secondaryReference && workflowRaw.includes("__COMPANION_REFERENCE_IMAGE_2__")) {
+      await this.uploadReference(secondaryReference);
+    }
     const replacements: Record<string, string | number> = {
       "__COMPANION_PROMPT__": prompt,
       "__COMPANION_NEGATIVE__": "minor, child, teenager, low quality, distorted anatomy, extra fingers, watermark, text",
@@ -69,6 +78,7 @@ export class ImageService {
       "__COMPANION_WIDTH__": request.width ?? 832,
       "__COMPANION_HEIGHT__": request.height ?? 1216,
       "__COMPANION_REFERENCE_IMAGE__": reference,
+      "__COMPANION_REFERENCE_IMAGE_2__": secondaryReference || reference,
       "__COMPANION_POSE_IMAGE__": request.poseImage ?? "",
       "__COMPANION_CONTROL_STRENGTH__": request.controlStrength ?? 0.85
     };
@@ -142,14 +152,17 @@ export class ImageService {
     return { ...record, filename, status: "complete", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined };
   }
 
-  private async resolveReference(slot?: string) {
+  private async resolveReferences(slot?: string): Promise<[string, string]> {
     const entries = await import("node:fs/promises").then((fs) => fs.readdir(this.referencesDir));
-    const images = entries.filter((name) => /\.(png|jpe?g|webp)$/i.test(name));
-    const file = slot
+    const images = entries.filter((name) => /\.(png|jpe?g|webp)$/i.test(name)).sort();
+    const primary = slot
       ? images.find((name) => name.startsWith(slot))
       : images.find((name) => name.startsWith("emily-reference-1")) ?? images[0];
-    if (!file) return "";
-    return file;
+    if (!primary) return ["", ""];
+    const secondary = images.find((name) => name !== primary && name.startsWith("emily-reference-"))
+      ?? images.find((name) => name !== primary)
+      ?? "";
+    return [primary, secondary];
   }
 
   private async uploadReference(filename: string) {

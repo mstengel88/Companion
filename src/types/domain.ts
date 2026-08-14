@@ -40,6 +40,7 @@ export interface PhotoRequest {
   referenceSlot?: string;
   poseImage?: string;
   controlStrength?: number;
+  workflowProfile?: string;
 }
 
 export interface PhotoRecord {
@@ -102,5 +103,8 @@ export interface WorkflowProfile {
     referenceImage: boolean;
     poseControl: boolean;
     controlImage: boolean;
+  };
+  routingHints?: {
+    namedPose?: boolean;
   };
 }

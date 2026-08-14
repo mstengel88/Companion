@@ -29,14 +29,18 @@ test("reports running and waiting ComfyUI queue positions", () => {
   assert.equal(locateQueueJob(queue, "missing-id"), null);
 });
 
-test("uploads a stored reference to ComfyUI before queueing the workflow", async (t) => {
+test("uploads stored references to ComfyUI before queueing a multi-reference workflow", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "emily-comfyui-"));
   const references = path.join(root, "data", "references");
   const photos = path.join(root, "data", "photos");
   const workflowFile = path.join(root, "workflow.json");
   await mkdir(references, { recursive: true });
   await writeFile(path.join(references, "emily-reference-1.jpg"), Buffer.from("reference"));
-  await writeFile(workflowFile, JSON.stringify({ 4: { inputs: { image: "__COMPANION_REFERENCE_IMAGE__" }, class_type: "LoadImage" } }));
+  await writeFile(path.join(references, "emily-reference-2.jpg"), Buffer.from("reference two"));
+  await writeFile(workflowFile, JSON.stringify({
+    4: { inputs: { image: "__COMPANION_REFERENCE_IMAGE__" }, class_type: "LoadImage" },
+    5: { inputs: { image: "__COMPANION_REFERENCE_IMAGE_2__" }, class_type: "LoadImage" }
+  }));
   t.after(async () => rm(root, { recursive: true, force: true }));
 
   const originalFetch = globalThis.fetch;
@@ -46,11 +50,11 @@ test("uploads a stored reference to ComfyUI before queueing the workflow", async
     calls.push(url);
     if (url.endsWith("/upload/image")) {
       assert.ok(init?.body instanceof FormData);
-      assert.equal((init.body.get("image") as File).name, "emily-reference-1.jpg");
-      return new Response(JSON.stringify({ name: "emily-reference-1.jpg", type: "input" }), { status: 200 });
+      return new Response(JSON.stringify({ name: (init.body.get("image") as File).name, type: "input" }), { status: 200 });
     }
-    const submitted = JSON.parse(String(init?.body)) as { prompt: { 4: { inputs: { image: string } } } };
+    const submitted = JSON.parse(String(init?.body)) as { prompt: { 4: { inputs: { image: string } }; 5: { inputs: { image: string } } } };
     assert.equal(submitted.prompt[4].inputs.image, "emily-reference-1.jpg");
+    assert.equal(submitted.prompt[5].inputs.image, "emily-reference-2.jpg");
     return new Response(JSON.stringify({ prompt_id: "prompt-1" }), { status: 200 });
   };
   t.after(() => { globalThis.fetch = originalFetch; });
@@ -62,5 +66,5 @@ test("uploads a stored reference to ComfyUI before queueing the workflow", async
   const service = new ImageService("http://comfy.test", root, references, photos);
   const result = await service.generate({ scene: "winter lodge" }, profile);
   assert.equal(result.comfyPromptId, "prompt-1");
-  assert.deepEqual(calls, ["http://comfy.test/upload/image", "http://comfy.test/prompt"]);
+  assert.deepEqual(calls, ["http://comfy.test/upload/image", "http://comfy.test/upload/image", "http://comfy.test/prompt"]);
 });

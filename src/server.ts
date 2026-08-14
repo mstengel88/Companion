@@ -130,8 +130,13 @@ app.get("/api/diagnostics", async (_req, res) => {
   });
 });
 
-async function generatePhoto(request: PhotoRequest) {
-  const workflow = await selectedWorkflow();
+async function generatePhoto(request: PhotoRequest, requestedProfile = request.workflowProfile) {
+  const profiles = await workflowProfiles();
+  const workflow = requestedProfile
+    ? profiles.find((profile) => profile.id === requestedProfile) ?? await selectedWorkflow()
+    : request.pose
+      ? profiles.find((profile) => profile.routingHints?.namedPose) ?? await selectedWorkflow()
+      : await selectedWorkflow();
   return inference.runImage(workflow, () => images.generate(request, workflow));
 }
 
@@ -172,7 +177,8 @@ const photoSchema = z.object({
   pose: z.string().max(300).optional(), expression: z.string().max(300).optional(), camera: z.string().max(300).optional(),
   environment: z.string().max(300).optional(), width: z.number().int().min(256).max(2048).optional(),
   height: z.number().int().min(256).max(2048).optional(), seed: z.number().int().optional(), referenceSlot: z.string().optional(),
-  poseImage: z.string().optional(), controlStrength: z.number().min(0).max(2).optional()
+  poseImage: z.string().optional(), controlStrength: z.number().min(0).max(2).optional(),
+  workflowProfile: z.string().max(100).optional()
 });
 app.post("/api/photos", async (req, res, next) => {
   try {
