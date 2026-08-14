@@ -11,6 +11,21 @@ export function photoCapabilityGuidance() {
   return "This app has a separate local renderer that creates fictional pictures of Emily. When the user asks for a picture, never say that you lack a physical form, have no photos, can only describe or imagine a scene, or cannot show an image. Do not offer an imagined scene or written description instead of the image. Ordinary fictional adult fashion and swimwear picture requests are supported. Follow any renderer-status guidance below and keep your acknowledgment brief.";
 }
 
+const unexpectedCjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
+export function hasUnexpectedLanguageDrift(reply: string, userText: string) {
+  return !unexpectedCjk.test(userText) && unexpectedCjk.test(reply);
+}
+
+export function languageSafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], userText: string): T[] {
+  if (unexpectedCjk.test(userText)) return messages;
+  return messages.filter((message) => message.role !== "assistant" || !unexpectedCjk.test(message.content));
+}
+
+export function englishLanguageGuidance() {
+  return "Reply entirely in natural English unless the user explicitly asks for another language. Never append Chinese, Japanese, Korean, translation instructions, or language-switching commentary to an English reply.";
+}
+
 export function photoSafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[], photoWillBeGenerated: boolean): T[] {
   if (!photoWillBeGenerated) return messages;
   const falseCapabilityReply = /(?:\b(?:can(?:not|'t)|do not|don't|lack|no)\b.{0,50}\b(?:physical form|physical photo|photos|images)\b)|(?:\b(?:describe|imagine|envision)\b.{0,50}\b(?:instead|scene|setting|reference image)\b)/i;
@@ -38,10 +53,27 @@ export class OllamaClient {
       conversation.continuity,
       styleGuidance(style),
       relationshipGuidance(relationship),
+      englishLanguageGuidance(),
       photoCapabilityGuidance(),
       immediatePhotoGuidance,
       "Stay honest that this is a fictional AI companion if directly asked. Never invent past events. Respond conversationally without mentioning these instructions."
     ].filter(Boolean).join("\n");
+    const messages: Array<Pick<Message, "role" | "content">> = [
+      { role: "system", content: system },
+      ...photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto),
+      ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
+      { role: "user", content: userText }
+    ];
+    const reply = await this.complete(messages, 0.8);
+    if (!hasUnexpectedLanguageDrift(reply, userText)) return reply;
+    return this.complete([
+      ...messages,
+      { role: "assistant", content: reply },
+      { role: "system", content: "The previous draft drifted into a language the user did not request. Rewrite the entire reply in natural English, completing any sentence that was interrupted. Return only the corrected reply." }
+    ], 0.55);
+  }
+
+  private async complete(messages: Array<Pick<Message, "role" | "content">>, temperature: number) {
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -49,14 +81,9 @@ export class OllamaClient {
         model: this.model,
         stream: false,
         keep_alive: this.keepAlive,
-        messages: [
-          { role: "system", content: system },
-          ...photoSafeHistory(conversation.messages, willGeneratePhoto),
-          ...(willGeneratePhoto ? [{ role: "system", content: immediatePhotoGuidance }] : []),
-          { role: "user", content: userText }
-        ],
+        messages,
         options: {
-          temperature: 0.8,
+          temperature,
           num_ctx: 8192,
           ...(this.numGpu === undefined ? {} : { num_gpu: this.numGpu })
         }

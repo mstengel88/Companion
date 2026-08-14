@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { routePhotoRequest } from "../src/services/photo-router.js";
-import { photoCapabilityGuidance, photoReplyGuidance, photoSafeHistory } from "../src/services/ollama.js";
+import { englishLanguageGuidance, hasUnexpectedLanguageDrift, languageSafeHistory, photoCapabilityGuidance, photoReplyGuidance, photoSafeHistory } from "../src/services/ollama.js";
 
 test("routes an explicit photo request", () => {
   const result = routePhotoRequest("Will you send me a snowboarding photo?", { enabled: true, cooldownMinutes: 30 });
@@ -70,4 +70,16 @@ test("old false-capability replies do not anchor a new photo response", () => {
   ];
   assert.deepEqual(photoSafeHistory(messages, true).map((message) => message.id), ["1", "3"]);
   assert.equal(photoSafeHistory(messages, false).length, 3);
+});
+
+test("detects and removes unexpected language drift from English context", () => {
+  const messages = [
+    { role: "assistant" as const, content: "Stay close to me." },
+    { role: "assistant" as const, content: "Stay close 更快请使用中文继续。" }
+  ];
+  assert.equal(hasUnexpectedLanguageDrift(messages[1]!.content, "keep going"), true);
+  assert.equal(hasUnexpectedLanguageDrift(messages[1]!.content, "请继续"), false);
+  assert.deepEqual(languageSafeHistory(messages, "keep going"), [messages[0]]);
+  assert.equal(languageSafeHistory(messages, "请继续").length, 2);
+  assert.match(englishLanguageGuidance(), /entirely in natural English/i);
 });
