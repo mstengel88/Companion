@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#211629" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Emily" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/emily-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/emily-icon.svg" />
+  <title>Emily · Local Companion</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="lock-screen" class="lock-screen" hidden>
+    <form id="login-form" class="login-card">
+      <div class="avatar">E</div>
+      <small>PRIVATE LOCAL COMPANION</small>
+      <h2>Unlock Emily</h2>
+      <p>Enter the PIN configured on the host Mac.</p>
+      <input name="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN" required autofocus />
+      <button>Unlock</button>
+      <span id="login-error" role="alert"></span>
+    </form>
+  </div>
+  <div class="shell">
+    <aside>
+      <div class="identity"><div class="avatar">E</div><div><h1>Emily</h1><span><i></i> local companion</span></div></div>
+      <nav>
+        <button class="active" data-view="chat">Chat</button>
+        <button data-view="photos">Photos</button>
+        <button data-view="memory">Memory</button>
+        <button data-view="settings">Settings</button>
+      </nav>
+      <p class="privacy">Everything stays on this computer unless you deliberately expose the server.</p>
+    </aside>
+    <main>
+      <section id="chat" class="view active">
+        <header><div><small>FICTIONAL ADULT CHARACTER · AGE 43</small><h2>Conversation</h2></div><div class="header-actions"><button id="new-conversation" class="chip danger">Start fresh</button><button id="health" class="chip">Check services</button></div></header>
+        <div id="messages" class="messages"><div class="empty"><strong>Start a private conversation</strong><span>Emily is polite, adventurous, and a little shy—with a playful streak.</span></div></div>
+        <form id="chat-form" class="composer"><textarea id="chat-input" rows="1" placeholder="Message Emily…" required></textarea><button>Send</button></form>
+      </section>
+      <section id="photos" class="view">
+        <header><div><small>LOCAL LIBRARY</small><h2>Photos</h2></div><span id="renderer-status" class="chip">Checking renderer…</span></header>
+        <form id="photo-form" class="panel grid-form">
+          <label class="wide">Scene<textarea name="scene" required placeholder="Snowboard lodge after a day on the mountain"></textarea></label>
+          <label>Activity<input name="activity" placeholder="warming up by the fire" /></label>
+          <label>Outfit<input name="outfit" placeholder="winter layers" /></label>
+          <label>Pose<input name="pose" placeholder="relaxed seated pose" /></label>
+          <label>Camera<input name="camera" placeholder="casual phone photo" /></label>
+          <label>Emily reference<select id="photo-reference" name="referenceSlot"><option value="">No reference</option></select></label>
+          <label>Pose/control image<input name="poseImage" placeholder="optional ComfyUI input filename" /></label>
+          <label>Control strength<input name="controlStrength" type="number" min="0" max="2" step="0.05" value="0.85" /></label>
+          <label>Rendering workflow<select id="photo-workflow" name="workflowProfile"></select></label>
+          <button class="wide">Queue photo</button>
+        </form>
+        <div id="photo-list" class="cards"></div>
+      </section>
+      <section id="memory" class="view">
+        <header><div><small>REVIEWABLE &amp; LOCAL</small><h2>Memory</h2></div></header>
+        <div id="style" class="panel"></div>
+        <form id="manual-memory-form" class="panel"><label>Add a memory <input name="text" placeholder="I prefer mountain trips in February" required /></label><label>Tags, comma separated <input name="tags" placeholder="travel, winter" /></label><button>Remember this</button></form>
+        <form id="context-form" class="panel"><label>Preview what Emily would recall <input name="query" placeholder="Ask about snowboarding, food, work…" required /></label><button>Preview context</button></form>
+        <div id="context-result"></div><div id="memory-list" class="cards"></div>
+      </section>
+      <section id="settings" class="view">
+        <header><div><small>INTEGRATIONS</small><h2>Settings</h2></div></header>
+        <div class="panel"><h3>Phone app</h3><p id="install-help">On iPhone, tap Share and choose “Add to Home Screen” to open Emily like an app.</p><button id="install-app" hidden>Install Emily</button><button id="logout" hidden>Lock app</button></div>
+        <div class="panel"><h3>Relationship tone</h3><p>Choose how intimate Emily may become. She follows your tone and does not force intimacy into unrelated conversations.</p><form id="relationship-form"><label>Conversation intensity <select name="intensity"><option value="warm">Warm — affectionate, non-explicit</option><option value="flirty">Flirty — teasing and suggestive</option><option value="spicy">Spicy — consensual adult explicit text allowed</option></select></label><button>Save relationship tone</button></form></div>
+        <div class="panel"><h3>Proactive check-ins</h3><p>Optional local check-ins respect your quiet hours and never run more often than the interval below.</p><form id="proactive-form" class="grid-form"><label><input type="checkbox" name="enabled" /> Enable proactive messages</label><label>Minimum interval (minutes)<input type="number" name="minimumIntervalMinutes" min="30" max="10080" required /></label><label>Quiet hours start (0–23)<input type="number" name="quietHoursStart" min="0" max="23" required /></label><label>Quiet hours end (0–23)<input type="number" name="quietHoursEnd" min="0" max="23" required /></label><button class="wide">Save check-in settings</button></form><button id="notifications">Enable browser notifications</button></div>
+        <div class="panel"><h3>Emily reference images</h3><p>Add one or two canonical images. They stay local and are hashed for identity tracking.</p><form id="reference-form"><input type="file" name="references" accept="image/png,image/jpeg,image/webp" multiple required /><button>Upload references</button></form><div id="reference-list"></div></div>
+        <div class="panel"><h3>Conversation import</h3><p>JSON, ChatGPT-style JSON, HTML transcripts, and labeled TXT are supported. Originals are archived locally, and repeated imports skip duplicates.</p><form id="import-form"><input type="file" name="conversation" accept=".json,.html,.htm,.txt,application/json,text/html,text/plain" required /><button>Import</button></form><pre id="import-result"></pre></div>
+        <div class="panel"><h3>Backup and restore</h3><p>Download conversations, memories, settings, and photo/reference metadata. Restore merges messages and memories without deleting current data; image binaries stay on this host.</p><a class="button-link" href="/api/backups/export" download>Download backup</a><form id="restore-form"><input type="file" name="backup" accept=".json,application/json" required /><button>Merge backup</button></form><pre id="restore-result"></pre></div>
+        <div class="panel danger-zone"><h3>Privacy and data</h3><p>Remove selected local data without resetting Emily’s other settings. Download a backup first if you may want it later.</p><div class="data-actions"><button id="clear-conversation">Clear conversation</button><button id="clear-memories">Forget all memories</button><button id="clear-style">Remove imported style</button></div></div>
+        <div class="panel"><h3>Runtime</h3><div id="runtime">Loading…</div><button id="diagnostics">Run diagnostics</button><pre id="diagnostic-result"></pre></div>
+      </section>
+    </main>
+  </div>
+  <button id="jump-latest" class="jump-latest" type="button" hidden aria-label="Jump to the latest message">↓ Latest</button>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Emily Local Companion",
+  "short_name": "Emily",
+  "description": "Private local companion chat",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#120f16",
+  "theme_color": "#211629",
+  "icons": [
+    { "src": "/emily-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
