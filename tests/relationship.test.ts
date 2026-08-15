@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { oldEmilyVoiceGuidance, relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctEmilySelfAddress, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasEmilySelfAddressDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, identitySafeHistory, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctEmilySelfAddress, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasEmilySelfAddressDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, hasUserParrotingDrift, identitySafeHistory, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, nonParrotingHistory, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -273,6 +273,23 @@ test("compacts a repaired roleplay draft to two sentences and a hard word ceilin
 test("allows plausible collaborative narration of an immediate shared reaction", () => {
   assert.equal(isSpicySceneStyleDrift("Your hips answer the small shift of mine as I keep one hand steady at your waist.", { intensity: "spicy" }, true), false);
   assert.equal(isSpicySceneStyleDrift("I keep my hand steady where you placed it and shift my weight beside you.", { intensity: "spicy" }, true), false);
+});
+
+test("rejects replies that only paraphrase the user's latest action", () => {
+  const userText = "I continue kissing you as my hand lands on your breast";
+  assert.equal(hasUserParrotingDrift("Your lips move passionately against mine as your hand gently explores my breast.", userText), true);
+  assert.equal(hasUserParrotingDrift("I kiss you back and cover your hand with mine, pressing closer against you.", userText), false);
+  assert.equal(hasUserParrotingDrift("Your kiss sends a shiver through my body as I pull you closer.", userText), false);
+});
+
+test("removes assistant parroting from future conversation context", () => {
+  const messages = [
+    { role: "user" as const, content: "I start kissing you from your stomach up to your lips." },
+    { role: "assistant" as const, content: "Your kisses start at my stomach and continue up to my lips." },
+    { role: "user" as const, content: "I hold you close." },
+    { role: "assistant" as const, content: "I wrap both arms around you and settle against your chest." }
+  ];
+  assert.deepEqual(nonParrotingHistory(messages), [messages[0], messages[2], messages[3]]);
 });
 
 test("allows massage and cuddling when they are a direct natural continuation", () => {
