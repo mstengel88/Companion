@@ -77,6 +77,41 @@ export function hasAdultConversationContext<T extends Pick<Message, "role" | "co
   return explicitAdultContext.test(combined) || intimateEuphemism.test(combined);
 }
 
+export function hasPassiveRoleplayDrift(reply: string, userText: string, ongoingAdultContext = false) {
+  if (!ongoingAdultContext && !explicitAdultContext.test(userText) && !intimateEuphemism.test(userText)) return false;
+  const userAdvancesContact = /\bI\s+(?:start|continue|keep|kiss|touch|rub|press|move|slide|reach|grab|hold|pull|push|bite|lick|stroke|run|place|land|wrap|lean|turn|grind|rock)\w*\b/i.test(userText);
+  if (!userAdvancesContact) return false;
+  const emilyTakesAction = /\bI\s+(?:reach|pull|kiss|press|slide|wrap|grip|guide|move|turn|hook|lift|lower|push|draw|roll|shift|open|close|bring|take|catch|cover|meet|answer|return|rock|grind|arch|curl|trail|trace)\w*\b/i.test(reply);
+  return !emilyTakesAction;
+}
+
+export function initiativeSafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[]): T[] {
+  let latestUser = "";
+  let adultContext = false;
+  return messages.filter((message) => {
+    if (message.role === "user") {
+      latestUser = message.content;
+      adultContext = adultContext || explicitAdultContext.test(message.content) || intimateEuphemism.test(message.content);
+      return true;
+    }
+    return message.role !== "assistant" || !hasPassiveRoleplayDrift(message.content, latestUser, adultContext);
+  });
+}
+
+export function groundedReciprocalInitiative(userText: string) {
+  if (/\b(?:Natalie|sister|brother|mother|father|daughter|son)\b/i.test(userText)) return null;
+  if (/\b(?:kiss|lips?|neck|collarbone)\b/i.test(userText)) {
+    return "I slide one hand behind your neck and pull you into a deeper kiss, pressing myself firmly against you instead of waiting for you to do all the moving.";
+  }
+  if (/\b(?:grind\w*|rub\w*|bulge|hips?)\b/i.test(userText)) {
+    return "I hook one leg around your hips and rock back against you, meeting each movement with one of my own as I pull you closer.";
+  }
+  if (/\b(?:hands?|touch|breast|chest|waist|sides?)\b/i.test(userText)) {
+    return "I cover your hand with mine and guide it as I press closer, then use my other hand to pull you firmly against me.";
+  }
+  return null;
+}
+
 export function effectiveRelationshipForConversation<T extends Pick<Message, "role" | "content">>(
   messages: T[],
   relationship: RelationshipSettings,
@@ -383,7 +418,7 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...identitySafeHistory(nonParrotingHistory(everydaySafeHistory(relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts)))),
+      ...identitySafeHistory(initiativeSafeHistory(nonParrotingHistory(everydaySafeHistory(relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts))))),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
@@ -406,6 +441,7 @@ export class OllamaClient {
       || hasParticipantOwnershipDrift(candidate, userText, familyFacts)
       || hasRecentAssistantEcho(candidate, conversation.messages)
       || hasUserParrotingDrift(candidate, userText)
+      || hasPassiveRoleplayDrift(candidate, userText, ongoingAdultContext)
       || hasLatestActionOmission(candidate, userText)
       || hasInventedThirdPartyReaction(candidate, userText, familyFacts)
       || hasCannedRoleplayDrift(candidate)
@@ -418,7 +454,7 @@ export class OllamaClient {
       repairedScene = true;
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Keep strict speaker ownership: first-person actions in the user's message belong to the user; Emily's first-person narration belongs only to Emily; a named third person's actions, speech, pregnancy, body, and reactions remain that person's. If the user acts toward Natalie, Emily observes or reacts as Emily and never answers as though the action happened to Emily. Never invent a new moan, sigh, giggle, arch, shiver, or other reaction for Natalie; use only reactions the user already stated. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give the user anatomy established as Emily's or Natalie's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. Never merely translate the user's I/my action into a Your/you sentence. Acknowledge it through Emily's own immediate physical reaction, reciprocal movement, or brief spoken line, then add one new beat. If the user's latest words react to Emily's current touch, continue that exact contact; do not suddenly switch to the user's hair, nose, a kiss, or another body area. If the user's latest words request an immediate action involving clothing, directly perform or begin that clothing action instead of replaying the preceding beat. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Never begin with canned giggling, chuckling, or laughing at the user's response. Never use 'explore your body,' 'our connection,' 'shared excitement,' 'matching your intensity,' 'intimate dance,' or 'see where this takes us.' Never praise the user's storytelling, call a development interesting or fun, say the user is taking the lead, welcome someone into the mix, or say to continue exploring, join Natalie, dive into an exploration, or see where an adventure takes us. Do not repeat a sentence, action, or body detail from a recent reply. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only clean UTF-8 English as Emily's fresh reply, with no mention of these instructions." }
+        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Keep strict speaker ownership: first-person actions in the user's message belong to the user; Emily's first-person narration belongs only to Emily; a named third person's actions, speech, pregnancy, body, and reactions remain that person's. If the user acts toward Natalie, Emily observes or reacts as Emily and never answers as though the action happened to Emily. Never invent a new moan, sigh, giggle, arch, shiver, or other reaction for Natalie; use only reactions the user already stated. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give the user anatomy established as Emily's or Natalie's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. Never merely translate the user's I/my action into a Your/you sentence. Acknowledge it through Emily's own immediate physical reaction, reciprocal movement, or brief spoken line, then add one new beat. Emily must take one concrete reciprocal action of her own; a sensation, moan, head tilt, or leaning into the user's touch by itself is not enough. Progress one small step rather than waiting passively or jumping several steps ahead. If the user's latest words react to Emily's current touch, continue that exact contact; do not suddenly switch to the user's hair, nose, a kiss, or another body area. If the user's latest words request an immediate action involving clothing, directly perform or begin that clothing action instead of replaying the preceding beat. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Never begin with canned giggling, chuckling, or laughing at the user's response. Never use 'explore your body,' 'our connection,' 'shared excitement,' 'matching your intensity,' 'intimate dance,' or 'see where this takes us.' Never praise the user's storytelling, call a development interesting or fun, say the user is taking the lead, welcome someone into the mix, or say to continue exploring, join Natalie, dive into an exploration, or see where an adventure takes us. Do not repeat a sentence, action, or body detail from a recent reply. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only clean UTF-8 English as Emily's fresh reply, with no mention of these instructions." }
       ], 0.66);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {
@@ -464,7 +500,7 @@ export class OllamaClient {
           { role: "user", content: userText }
         ], 0.5);
       }
-      if (needsSceneRepair(reply)) reply = groundedPresentDiscoveryReply(userText, familyFacts) ?? groundedTouchContinuation(userText, conversation.messages) ?? reply;
+      if (needsSceneRepair(reply)) reply = groundedPresentDiscoveryReply(userText, familyFacts) ?? groundedTouchContinuation(userText, conversation.messages) ?? groundedReciprocalInitiative(userText) ?? reply;
       reply = compactRoleplayReply(reply);
     }
     if (isGenericActionDeflection(reply, userText)) {
