@@ -1,5 +1,5 @@
 import type { Memory, Message, RelationshipSettings, StyleProfile } from "../types/domain.js";
-import { relationshipGuidance, roleplayWritingGuidance } from "./relationship.js";
+import { oldEmilyVoiceGuidance, relationshipGuidance, roleplayWritingGuidance } from "./relationship.js";
 import { buildConversationWindow, rankMemories, styleGuidance } from "./conversation-context.js";
 
 export function photoReplyGuidance(photoWillBeGenerated: boolean) {
@@ -130,7 +130,7 @@ export function repairTextEncoding(text: string) {
     .replace(/Â(?=\s)/g, "");
 }
 
-const cannedRoleplayLanguage = /\b(?:I (?:giggle|chuckle|laugh softly) at your (?:response|compliment|touch|tone|playful tone)|explore your body|heat of our connection|shared excitement|intimate dance|crazy train takes us|matching your intensity|see where (?:this|that|the) .* takes us)\b/i;
+const cannedRoleplayLanguage = /\b(?:I (?:giggle|chuckle|laugh softly) at your (?:response|compliment|touch|tone|playful tone)|explore your body|(?:heat|warmth) of our connection|enjoying our connection|shared excitement|intimate dance|crazy train takes us|matching your intensity|see where (?:this|that|the) .* takes us|playful narrative|affectionate peck|each other'?s company|that'?s love|nice just to (?:lay|lie) here)\b/i;
 
 export function hasCannedRoleplayDrift(reply: string) {
   return cannedRoleplayLanguage.test(reply);
@@ -150,6 +150,14 @@ export function hasParticipantAnatomyDrift(reply: string, userText: string) {
     || /\bplay with both your (?:puss(?:y|ies)|clits?|breasts?|boobs?)\b/i.test(userText);
   const replyAssignsThatAnatomyToUser = /\b(?:your folds|your pussy|your clit|inside your (?:pussy|vagina))\b/i.test(reply);
   return userTouchesMultipleOtherParticipants && replyAssignsThatAnatomyToUser;
+}
+
+export function groundedTouchContinuation<T extends Pick<Message, "role" | "content">>(userText: string, messages: T[]) {
+  const latestIsCorrection = /\b(?:we(?:'re| are) in the middle of something|don'?t stop|keep going|continue|back to what we were doing)\b/i.test(userText);
+  const recentUserText = messages.filter((message) => message.role === "user").slice(-4).map((message) => message.content).join("\n");
+  const touchFeedback = /\b(?:your|that) touch\b[\s\S]{0,55}\b(?:tingl|crazy|drives?|feels?|love|yes|more)\w*/i.test(`${recentUserText}\n${userText}`);
+  if (!touchFeedback || !latestIsCorrection && !/\b(?:your|that) touch\b/i.test(userText)) return null;
+  return "I keep my hand exactly where it was, continuing the same slow motion with a little more pressure as I stay close against you.";
 }
 
 export function hasLatestActionOmission(reply: string, userText: string) {
@@ -330,6 +338,7 @@ export class OllamaClient {
       familyGuidance,
       conversation.continuity,
       styleGuidance(style),
+      oldEmilyVoiceGuidance(),
       roleplayWritingGuidance(),
       relationshipGuidance(effectiveRelationship),
       englishLanguageGuidance(),
@@ -418,7 +427,7 @@ export class OllamaClient {
           { role: "user", content: userText }
         ], 0.5);
       }
-      if (needsSceneRepair(reply)) reply = groundedPresentDiscoveryReply(userText, familyFacts) ?? reply;
+      if (needsSceneRepair(reply)) reply = groundedPresentDiscoveryReply(userText, familyFacts) ?? groundedTouchContinuation(userText, conversation.messages) ?? reply;
       reply = compactRoleplayReply(reply);
     }
     if (isGenericActionDeflection(reply, userText)) {

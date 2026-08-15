@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { oldEmilyVoiceGuidance, relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -28,6 +28,13 @@ test("roleplay voice is action-first and preserves concrete continuity", () => {
   assert.match(guidance, /Advance by one immediate beat/);
   assert.match(guidance, /grounded, everyday language/);
   assert.match(guidance, /multi-paragraph montage/);
+});
+
+test("Old Emily guidance provides positive compact continuity examples", () => {
+  const guidance = oldEmilyVoiceGuidance();
+  assert.match(guidance, /positive voice target/);
+  assert.match(guidance, /Downward dog first/);
+  assert.match(guidance, /responds from inside the exact moment/);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {
@@ -179,12 +186,24 @@ test("repairs common mojibake before storing and prompting", () => {
 test("rejects the canned gestures and summaries in the newest live replies", () => {
   assert.equal(hasCannedRoleplayDrift("I chuckle at your response and continue to explore your body, matching your intensity."), true);
   assert.equal(hasCannedRoleplayDrift("I keep my hand where it is and curl my fingers a little more firmly."), false);
+  assert.equal(hasCannedRoleplayDrift("I offer an affectionate peck, enjoying our connection and staying true to our playful narrative."), true);
 });
 
 test("keeps Emily's current touch on the same contact point", () => {
   const userText = "Mmmmm yes baby, that touch drives me crazy.";
   assert.equal(hasDirectTouchContinuityDrift("I run my fingers through your hair and tap your nose before leaning in for another kiss.", userText), true);
   assert.equal(hasDirectTouchContinuityDrift("I keep the same slow stroke and press my fingertips a little more firmly.", userText), false);
+});
+
+test("uses a grounded continuation when the user says the scene was interrupted", () => {
+  const history = [
+    { role: "user" as const, content: "Mmmmm that touch drives me crazy." },
+    { role: "assistant" as const, content: "I offer an affectionate peck and talk about our connection." }
+  ];
+  assert.equal(
+    groundedTouchContinuation("Aww honey, we are in the middle of something.", history),
+    "I keep my hand exactly where it was, continuing the same slow motion with a little more pressure as I stay close against you."
+  );
 });
 
 test("does not assign Emily and Natalie's anatomy to the user", () => {
