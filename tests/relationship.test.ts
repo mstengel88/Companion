@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { oldEmilyVoiceGuidance, relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctEmilySelfAddress, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedReciprocalInitiative, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasEmilySelfAddressDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasPassiveRoleplayDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, hasUserParrotingDrift, identitySafeHistory, initiativeSafeHistory, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, nonParrotingHistory, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctEmilySelfAddress, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedOpenLeadInitiative, groundedPresentDiscoveryReply, groundedReciprocalInitiative, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasEmilySelfAddressDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasOpenLeadDeflection, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasPassiveRoleplayDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, hasUserParrotingDrift, identitySafeHistory, initiativeSafeHistory, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, nonParrotingHistory, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -312,6 +312,21 @@ test("provides a one-beat reciprocal fallback for repeated passive drafts", () =
   assert.match(groundedReciprocalInitiative("I continue grinding against you") ?? "", /rock back against you/i);
   assert.match(groundedReciprocalInitiative("I kiss your collarbone") ?? "", /pull you into a deeper kiss/i);
   assert.equal(groundedReciprocalInitiative("I kiss Natalie"), null);
+});
+
+test("requires a decisive action when the user hands Emily the lead", () => {
+  const userText = "What do you want to do next?";
+  assert.equal(hasOpenLeadDeflection("I run my hands down your back. Let's just enjoy this for now as I lean in for another kiss.", userText, true), true);
+  assert.equal(hasOpenLeadDeflection("I catch your hips and set a firmer rhythm of my own as I take the lead.", userText, true), false);
+  assert.equal(hasOpenLeadDeflection("I catch your hips and set a firmer rhythm of my own.", userText, false), false);
+});
+
+test("uses recent contact for an open-lead fallback", () => {
+  const history = [
+    { role: "user" as const, content: "I continue grinding and kissing you." },
+    { role: "assistant" as const, content: "I feel the pressure build as I murmur softly." }
+  ];
+  assert.match(groundedOpenLeadInitiative("What do you want to do next?", history) ?? "", /set a firmer rhythm of my own/i);
 });
 
 test("allows massage and cuddling when they are a direct natural continuation", () => {
