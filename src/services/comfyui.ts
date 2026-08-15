@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { randomInt } from "node:crypto";
 import path from "node:path";
 import type { PhotoRecord, PhotoRequest, WorkflowProfile } from "../types/domain.js";
 
@@ -49,15 +50,16 @@ export class ImageService {
 
   async generate(request: PhotoRequest, profile: WorkflowProfile): Promise<PhotoRecord> {
     const id = crypto.randomUUID();
-    const prompt = buildPrompt(request);
+    const normalizedRequest = { ...request, seed: request.seed ?? randomInt(1, 2_147_483_647) };
+    const prompt = buildPrompt(normalizedRequest);
     const base: PhotoRecord = {
       id, filename: `${id}.json`, createdAt: new Date().toISOString(), status: "queued",
-      workflowProfile: profile.id, prompt, request
+      workflowProfile: profile.id, prompt, request: normalizedRequest
     };
     await mkdir(this.photosDir, { recursive: true });
     if (profile.mode === "mock") {
       const filename = `${id}.json`;
-      await writeFile(path.join(this.photosDir, filename), JSON.stringify({ mock: true, prompt, request }, null, 2));
+      await writeFile(path.join(this.photosDir, filename), JSON.stringify({ mock: true, prompt, request: normalizedRequest }, null, 2));
       return { ...base, filename, status: "mock" };
     }
     if (!profile.workflowFile) throw new Error(`Workflow profile ${profile.id} has no workflowFile`);
@@ -74,7 +76,7 @@ export class ImageService {
     const replacements: Record<string, string | number> = {
       "__COMPANION_PROMPT__": prompt,
       "__COMPANION_NEGATIVE__": "minor, child, teenager, low quality, distorted anatomy, extra fingers, watermark, text",
-      "__COMPANION_SEED__": request.seed ?? 430208,
+      "__COMPANION_SEED__": normalizedRequest.seed,
       "__COMPANION_WIDTH__": request.width ?? 832,
       "__COMPANION_HEIGHT__": request.height ?? 1216,
       "__COMPANION_REFERENCE_IMAGE__": reference,

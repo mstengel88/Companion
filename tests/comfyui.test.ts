@@ -38,6 +38,7 @@ test("uploads stored references to ComfyUI before queueing a multi-reference wor
   await writeFile(path.join(references, "emily-reference-1.jpg"), Buffer.from("reference"));
   await writeFile(path.join(references, "emily-reference-2.jpg"), Buffer.from("reference two"));
   await writeFile(workflowFile, JSON.stringify({
+    2: { inputs: { seed: "__COMPANION_SEED__" }, class_type: "KSampler" },
     4: { inputs: { image: "__COMPANION_REFERENCE_IMAGE__" }, class_type: "LoadImage" },
     5: { inputs: { image: "__COMPANION_REFERENCE_IMAGE_2__" }, class_type: "LoadImage" }
   }));
@@ -45,6 +46,7 @@ test("uploads stored references to ComfyUI before queueing a multi-reference wor
 
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];
+  let submittedSeed: number | undefined;
   globalThis.fetch = async (input, init) => {
     const url = String(input);
     calls.push(url);
@@ -52,7 +54,8 @@ test("uploads stored references to ComfyUI before queueing a multi-reference wor
       assert.ok(init?.body instanceof FormData);
       return new Response(JSON.stringify({ name: (init.body.get("image") as File).name, type: "input" }), { status: 200 });
     }
-    const submitted = JSON.parse(String(init?.body)) as { prompt: { 4: { inputs: { image: string } }; 5: { inputs: { image: string } } } };
+    const submitted = JSON.parse(String(init?.body)) as { prompt: { 2?: { inputs?: { seed?: number } }; 4: { inputs: { image: string } }; 5: { inputs: { image: string } } } };
+    submittedSeed = submitted.prompt[2]?.inputs?.seed;
     assert.equal(submitted.prompt[4].inputs.image, "emily-reference-1.jpg");
     assert.equal(submitted.prompt[5].inputs.image, "emily-reference-2.jpg");
     return new Response(JSON.stringify({ prompt_id: "prompt-1" }), { status: 200 });
@@ -66,6 +69,9 @@ test("uploads stored references to ComfyUI before queueing a multi-reference wor
   const service = new ImageService("http://comfy.test", root, references, photos);
   const result = await service.generate({ scene: "winter lodge" }, profile);
   assert.equal(result.comfyPromptId, "prompt-1");
+  assert.ok(Number.isInteger(result.request.seed));
+  assert.ok((result.request.seed ?? 0) >= 1 && (result.request.seed ?? 0) < 2_147_483_647);
+  assert.equal(submittedSeed, result.request.seed);
   assert.deepEqual(calls, ["http://comfy.test/upload/image", "http://comfy.test/upload/image", "http://comfy.test/prompt"]);
 });
 
