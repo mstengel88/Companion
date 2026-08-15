@@ -150,6 +150,8 @@ Copy `.env.example` to `.env`. Notable values:
 - `OLLAMA_MODEL=qwen2.5:7b`: conversational model.
 - `COMFYUI_PROFILE=mock`: workflow profile ID.
 - `OLLAMA_KEEP_ALIVE=5m`: normal chat-model residency before an image handoff.
+- `OLLAMA_CHAT_TIMEOUT_MS=120000`: primary chat attempt timeout; a timed-out request is retried once with compact recent context.
+- `OLLAMA_NUM_PREDICT=192`: caps reply generation so a runaway response cannot hold the chat indefinitely.
 - `GPU_HANDOFF=auto`: unload the Ollama model before a real ComfyUI job; use `off` only when the models fit together.
 - `PHOTO_ROUTING=auto`: route direct/contextual photo requests from chat.
 - `AUTO_PHOTO_COOLDOWN_MINUTES=30`: avoid repeated automatic queues.

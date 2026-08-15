@@ -328,7 +328,9 @@ export class OllamaClient {
     private readonly baseUrl: string,
     private readonly model: string,
     private readonly keepAlive = "5m",
-    private readonly numGpu?: number
+    private readonly numGpu?: number,
+    private readonly timeoutMs = 120_000,
+    private readonly numPredict = 192
   ) {}
 
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
@@ -473,6 +475,18 @@ export class OllamaClient {
   }
 
   private async complete(messages: Array<Pick<Message, "role" | "content">>, temperature: number) {
+    try {
+      return await this.requestCompletion(messages, temperature, this.timeoutMs, 8192, this.numPredict);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "TimeoutError")) throw error;
+      const system = messages.find((message) => message.role === "system");
+      const recent = messages.filter((message) => message.role !== "system").slice(-8);
+      const retryMessages = [...(system ? [system] : []), ...recent];
+      return this.requestCompletion(retryMessages, Math.min(temperature, 0.65), 60_000, 6144, Math.min(this.numPredict, 112));
+    }
+  }
+
+  private async requestCompletion(messages: Array<Pick<Message, "role" | "content">>, temperature: number, timeoutMs: number, numCtx: number, numPredict: number) {
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -483,12 +497,13 @@ export class OllamaClient {
         messages,
         options: {
           temperature,
-          num_ctx: 8192,
+          num_ctx: numCtx,
+          num_predict: numPredict,
           stop: ["\nUser:", "\nuser:", "\nHuman:", "\nhuman:"],
           ...(this.numGpu === undefined ? {} : { num_gpu: this.numGpu })
         }
       }),
-      signal: AbortSignal.timeout(120_000)
+      signal: AbortSignal.timeout(timeoutMs)
     });
     if (!response.ok) throw new Error(`Ollama returned ${response.status}: ${await response.text()}`);
     const body = await response.json() as { message?: { content?: string } };

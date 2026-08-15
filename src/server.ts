@@ -32,11 +32,17 @@ const ollamaNumGpu = ollamaNumGpuText ? Number(ollamaNumGpuText) : undefined;
 if (ollamaNumGpu !== undefined && (!Number.isInteger(ollamaNumGpu) || ollamaNumGpu < 0)) {
   throw new Error("OLLAMA_NUM_GPU must be a non-negative integer when set.");
 }
+const ollamaTimeoutMs = Number(process.env.OLLAMA_CHAT_TIMEOUT_MS ?? 120_000);
+const ollamaNumPredict = Number(process.env.OLLAMA_NUM_PREDICT ?? 192);
+if (!Number.isInteger(ollamaTimeoutMs) || ollamaTimeoutMs < 10_000) throw new Error("OLLAMA_CHAT_TIMEOUT_MS must be an integer of at least 10000.");
+if (!Number.isInteger(ollamaNumPredict) || ollamaNumPredict < 32) throw new Error("OLLAMA_NUM_PREDICT must be an integer of at least 32.");
 const ollama = new OllamaClient(
   process.env.OLLAMA_URL ?? "http://127.0.0.1:11434",
   process.env.OLLAMA_MODEL ?? "qwen2.5:7b",
   process.env.OLLAMA_KEEP_ALIVE ?? "5m",
-  ollamaNumGpu
+  ollamaNumGpu,
+  ollamaTimeoutMs,
+  ollamaNumPredict
 );
 const images = new ImageService(process.env.COMFYUI_URL ?? "http://127.0.0.1:8188", root, refsDir, photosDir);
 const gpuHandoff = process.env.GPU_HANDOFF === "off" ? "off" : "auto";
