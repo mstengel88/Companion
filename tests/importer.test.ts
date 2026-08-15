@@ -41,6 +41,27 @@ test("imports labeled text with stable IDs", () => {
   assert.deepEqual(first.messages.map((message) => message.id), second.messages.map((message) => message.id));
 });
 
+test("imports an unlabeled alternating conversation", () => {
+  const raw = [
+    "Straight ahead",
+    "Straight ahead it is. I step onto the dock beside you.",
+    "Let’s find out",
+    "I try the key in the lock.",
+    "That is strange",
+    "I keep close and look toward the workbench."
+  ].join("\n\n");
+  const result = importConversation("old-emily.txt", raw);
+  assert.deepEqual(result.messages.map(({ role, content }) => ({ role, content })), [
+    { role: "user", content: "Straight ahead" },
+    { role: "assistant", content: "Straight ahead it is. I step onto the dock beside you." },
+    { role: "user", content: "Let’s find out" },
+    { role: "assistant", content: "I try the key in the lock." },
+    { role: "user", content: "That is strange" },
+    { role: "assistant", content: "I keep close and look toward the workbench." }
+  ]);
+  assert.match(result.warnings[0] ?? "", /alternating user and assistant/);
+});
+
 test("extracts a bounded style profile", () => {
   const result = extractStyle([{ content: "Hey you 😊" }, { content: "Want to go riding?" }]);
   assert.equal(result.sampleCount, 2);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { oldEmilyVoiceGuidance, relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctEmilySelfAddress, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, groundedTouchContinuation, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasEmilySelfAddressDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, identitySafeHistory, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -35,6 +35,18 @@ test("Old Emily guidance provides positive compact continuity examples", () => {
   assert.match(guidance, /positive voice target/);
   assert.match(guidance, /Downward dog first/);
   assert.match(guidance, /responds from inside the exact moment/);
+  assert.match(guidance, /never addresses herself as/);
+});
+
+test("rejects and corrects Emily addressing herself as her partner", () => {
+  const bad = "I grip the sheets as the feeling builds. ‘Cum for me, Emily,’ I moan.";
+  assert.equal(hasEmilySelfAddressDrift(bad), true);
+  assert.equal(correctEmilySelfAddress(bad), "I grip the sheets as the feeling builds. ‘Cum for me, baby,’ I moan.");
+  assert.equal(hasEmilySelfAddressDrift("I tell you that Natalie is Emily's sister."), false);
+  assert.deepEqual(identitySafeHistory([
+    { role: "assistant" as const, content: bad },
+    { role: "assistant" as const, content: "I keep my eyes on yours and whisper, ‘Stay close, baby.’" }
+  ]).map((message) => message.content), ["I keep my eyes on yours and whisper, ‘Stay close, baby.’"]);
 });
 
 test("spicy mode is adult, consensual, and contextual", () => {

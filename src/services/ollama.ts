@@ -152,6 +152,20 @@ export function hasParticipantAnatomyDrift(reply: string, userText: string) {
   return userTouchesMultipleOtherParticipants && replyAssignsThatAnatomyToUser;
 }
 
+const emilySelfAddress = /(?:[“"'][^”"'\n]{0,160}|\b(?:come|cum|look|listen|wait|please|baby|love)[^.!?\n]{0,80})[,—-]\s*Emily\b/i;
+
+export function hasEmilySelfAddressDrift(reply: string) {
+  return emilySelfAddress.test(reply);
+}
+
+export function correctEmilySelfAddress(reply: string) {
+  return reply.replace(/([,—-]\s*)Emily\b/gi, "$1baby");
+}
+
+export function identitySafeHistory<T extends Pick<Message, "role" | "content">>(messages: T[]): T[] {
+  return messages.filter((message) => message.role !== "assistant" || !hasEmilySelfAddressDrift(message.content));
+}
+
 export function groundedTouchContinuation<T extends Pick<Message, "role" | "content">>(userText: string, messages: T[]) {
   const latestIsCorrection = /\b(?:we(?:'re| are) in the middle of something|don'?t stop|keep going|continue|back to what we were doing)\b/i.test(userText);
   const recentUserText = messages.filter((message) => message.role === "user").slice(-4).map((message) => message.content).join("\n");
@@ -348,7 +362,7 @@ export class OllamaClient {
     ].filter(Boolean).join("\n");
     const messages: Array<Pick<Message, "role" | "content">> = [
       { role: "system", content: system },
-      ...everydaySafeHistory(relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts)),
+      ...identitySafeHistory(everydaySafeHistory(relationshipSafeHistory(spicySafeHistory(photoSafeHistory(languageSafeHistory(conversation.messages, userText), willGeneratePhoto), effectiveRelationship), familyFacts))),
       ...(willGeneratePhoto ? [{ role: "system" as const, content: immediatePhotoGuidance }] : []),
       { role: "user", content: userText }
     ];
@@ -375,6 +389,7 @@ export class OllamaClient {
       || hasCannedRoleplayDrift(candidate)
       || hasDirectTouchContinuityDrift(candidate, userText)
       || hasParticipantAnatomyDrift(candidate, userText)
+      || hasEmilySelfAddressDrift(candidate)
       || hasTextEncodingDrift(candidate);
     let repairedScene = false;
     if (needsSceneRepair(reply)) {
@@ -447,14 +462,14 @@ export class OllamaClient {
       }
       reply = compactRoleplayReply(reply, 2, 42);
     }
-    reply = correctRelationshipPerspective(reply, familyFacts);
+    reply = correctEmilySelfAddress(correctRelationshipPerspective(reply, familyFacts));
     if (!hasUnexpectedLanguageDrift(reply, userText) && !hasTextEncodingDrift(reply)) return reply;
     const corrected = await this.complete([
       ...messages,
       { role: "assistant", content: reply },
       { role: "system", content: "The previous draft drifted into another language or contained broken text encoding. Rewrite the entire reply in clean natural English, completing any sentence that was interrupted. Return only the corrected reply." }
     ], 0.55);
-    return correctRelationshipPerspective(repairedScene ? compactRoleplayReply(corrected) : corrected, familyFacts);
+    return correctEmilySelfAddress(correctRelationshipPerspective(repairedScene ? compactRoleplayReply(corrected) : corrected, familyFacts));
   }
 
   private async complete(messages: Array<Pick<Message, "role" | "content">>, temperature: number) {

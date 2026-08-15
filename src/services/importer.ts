@@ -88,6 +88,12 @@ function labeledTextMessages(raw: string) {
   return messages;
 }
 
+function alternatingTextMessages(raw: string) {
+  const blocks = raw.split(/\r?\n\s*\r?\n/).map((block) => block.trim()).filter(Boolean);
+  if (blocks.length < 6 || blocks.some((block) => block.length > 4000)) return [];
+  return blocks.map((content, index) => stableMessage(index % 2 === 0 ? "user" : "assistant", content, normalizeDate(undefined, index), index));
+}
+
 function htmlMessages(raw: string) {
   const messages: Message[] = [];
   const roleBlocks = /<([a-z][\w-]*)\b[^>]*(?:data-role|data-message-author-role)=["'](user|assistant|human|bot|me|emily)["'][^>]*>([\s\S]*?)<\/\1>/gi;
@@ -115,6 +121,10 @@ export function importConversation(filename: string, raw: string): ImportResult 
   } else {
     adapter = "text";
     messages = labeledTextMessages(raw);
+    if (!messages.length) {
+      messages = alternatingTextMessages(raw);
+      if (messages.length) warnings.push("Parsed unlabeled paragraphs as alternating user and assistant turns, beginning with the user.");
+    }
   }
   if (!messages.length) warnings.push("No supported messages were recognized. The original file was retained so a source-specific adapter can be added later.");
   return { source: filename, adapter, messages, warnings };
