@@ -140,7 +140,20 @@ export class ImageService {
     if (!image) {
       if (job?.status?.status_str === "error") return { ...record, status: "failed", completedAt: new Date().toISOString(), queueState: undefined, queuePosition: undefined, queueLength: undefined, error: "ComfyUI reported a workflow error." };
       const queueJob = queue ? locateQueueJob(queue, record.comfyPromptId) : null;
-      return queueJob ? { ...record, ...queueJob } : record;
+      if (queueJob) return { ...record, ...queueJob };
+      const createdAt = Date.parse(record.createdAt);
+      const orphaned = queue !== null && !job && Number.isFinite(createdAt) && Date.now() - createdAt > 10 * 60_000;
+      return orphaned
+        ? {
+            ...record,
+            status: "failed",
+            completedAt: new Date().toISOString(),
+            queueState: undefined,
+            queuePosition: undefined,
+            queueLength: undefined,
+            error: "ComfyUI restarted before completion was recorded. The request can be retried safely."
+          }
+        : record;
     }
     const params = new URLSearchParams({ filename: image.filename, subfolder: image.subfolder ?? "", type: image.type ?? "output" });
     const fileResponse = await fetch(`${this.comfyUrl}/view?${params}`, { signal: AbortSignal.timeout(30_000) });

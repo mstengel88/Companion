@@ -2,7 +2,8 @@ param(
   [string]$ComfyRoot = "E:\Comfy-Desktop\ComfyUI-Installs\ComfyUI\ComfyUI",
   [string]$ListenAddress = "100.118.33.47",
   [int]$Port = 8188,
-  [double]$ReserveVramGb = 1.5
+  [double]$ReserveVramGb = 1.5,
+  [string]$OutputDirectory = "E:\Comfy-Desktop\ComfyUI-Shared\output"
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +17,7 @@ $Python = Join-Path $ComfyRoot ".venv\Scripts\python.exe"
 $Main = Join-Path $ComfyRoot "main.py"
 
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 if (-not (Test-Path $Python)) { throw "ComfyUI Python was not found: $Python" }
 if (-not (Test-Path $Main)) { throw "ComfyUI main.py was not found: $Main" }
 
@@ -34,6 +36,7 @@ try {
     "--listen", $ListenAddress,
     "--port", $Port,
     "--reserve-vram", $ReserveVramGb,
+    "--output-directory", $OutputDirectory,
     "--cpu-vae",
     "--preview-method", "none"
   )

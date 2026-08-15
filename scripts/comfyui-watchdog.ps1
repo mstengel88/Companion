@@ -28,6 +28,21 @@ if ($healthy) {
   exit 0
 }
 
+# Large workflows can make ComfyUI's HTTP health endpoint slow while the GPU is
+# fully occupied. A live renderer that still owns the listening socket is busy,
+# not dead, so leave its active queue untouched.
+$listener = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+  Where-Object { $_.LocalPort -eq ([uri]$ComfyUrl).Port } |
+  Select-Object -First 1
+$renderer = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -match "ComfyUI.*main\.py" } |
+  Select-Object -First 1
+if ($listener -and $renderer) {
+  Set-Content -Path $FailureState -Value "0"
+  Write-WatchdogLog "HTTP health check was slow, but renderer PID $($renderer.ProcessId) is listening on port $($listener.LocalPort); leaving the active render alone."
+  exit 0
+}
+
 $failures = 0
 if (Test-Path $FailureState) { $failures = [int](Get-Content $FailureState -ErrorAction SilentlyContinue) }
 $failures += 1
@@ -45,9 +60,12 @@ try {
   Write-WatchdogLog "GPU before recovery: $gpu"
 } catch {}
 
-Write-WatchdogLog "Health failed twice; restarting scheduled task $RendererTask."
-try { Invoke-WebRequest -UseBasicParsing -Method Post -Uri "$ComfyUrl/interrupt" -ContentType "application/json" -Body "{}" -TimeoutSec 3 | Out-Null } catch {}
-try { Invoke-WebRequest -UseBasicParsing -Method Post -Uri "$ComfyUrl/queue" -ContentType "application/json" -Body '{"clear":true}' -TimeoutSec 3 | Out-Null } catch {}
+if ($failures -lt 3) {
+  Write-WatchdogLog "Waiting for three consecutive failures before recovery."
+  exit 0
+}
+
+Write-WatchdogLog "Health failed three consecutive times with no listener; restarting scheduled task $RendererTask."
 Stop-ScheduledTask -TaskName $RendererTask -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
@@ -56,4 +74,5 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 Start-ScheduledTask -TaskName $RendererTask -ErrorAction SilentlyContinue
+Set-Content -Path $FailureState -Value "0"
 Write-WatchdogLog "Restart requested."

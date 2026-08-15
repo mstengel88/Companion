@@ -68,3 +68,26 @@ test("uploads stored references to ComfyUI before queueing a multi-reference wor
   assert.equal(result.comfyPromptId, "prompt-1");
   assert.deepEqual(calls, ["http://comfy.test/upload/image", "http://comfy.test/upload/image", "http://comfy.test/prompt"]);
 });
+
+test("marks an old queued request as retryable after ComfyUI loses its history", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "emily-comfyui-orphan-"));
+  t.after(async () => rm(root, { recursive: true, force: true }));
+  const service = new ImageService("http://comfy.test", root, root, root);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 200 });
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  const record = await service.refresh({
+    id: "orphaned",
+    filename: "orphaned.json",
+    createdAt: new Date(Date.now() - 11 * 60_000).toISOString(),
+    status: "queued",
+    workflowProfile: "test",
+    prompt: "test",
+    request: { scene: "test" },
+    comfyPromptId: "missing-prompt"
+  }, { queue_running: [], queue_pending: [] });
+
+  assert.equal(record.status, "failed");
+  assert.match(record.error ?? "", /restarted before completion/);
+});
