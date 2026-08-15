@@ -9,7 +9,7 @@ import { JsonStore } from "./store/json-store.js";
 import { extractMemoryCandidates, extractStyle } from "./services/extraction.js";
 import { importConversation } from "./services/importer.js";
 import { routePhotoRequest } from "./services/photo-router.js";
-import { OllamaClient } from "./services/ollama.js";
+import { OllamaClient, repairTextEncoding } from "./services/ollama.js";
 import { ImageService } from "./services/comfyui.js";
 import { InferenceCoordinator } from "./services/inference-coordinator.js";
 import { proactivePrompt, shouldSendProactive } from "./services/proactive.js";
@@ -143,7 +143,8 @@ async function generatePhoto(request: PhotoRequest, requestedProfile = request.w
 const chatSchema = z.object({ message: z.string().trim().min(1).max(4000) });
 app.post("/api/chat", async (req, res, next) => {
   try {
-    const { message: text } = chatSchema.parse(req.body);
+    const { message } = chatSchema.parse(req.body);
+    const text = repairTextEncoding(message);
     const before = await store.read();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text, createdAt: new Date().toISOString() };
     const routing = routePhotoRequest(text, {

@@ -49,7 +49,7 @@ export function spicySafeHistory<T extends Pick<Message, "role" | "content">>(me
   const vaguePoeticFiller = /\b(?:your words (?:send|stir)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle)\b/i;
   const scenerySubstitute = /\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|shared release|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined (?:bodies|connection)|shared (?:pleasure|desire)|playful adventure|basking in the afterglow|connection we share|savor what (?:just )?happened|depths? of our (?:shared )?desire|take things one step at a time|glad I could bring you joy|let'?s explore (?:a little )?more)\b/i;
   const sceneRelocationFiller = /\b(?:decided to take a (?:little )?nap|gentle wake-up call|wake (?:her|him|them) up|let'?s (?:go|head|walk)(?: over)?(?: and)? (?:see|find|check on) (?:her|him|them)|give (?:her|him|them) some company if that'?s what (?:she|he|they) wants?)\b/i;
-  return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content) && !transcriptEcho.test(message.content) && !vaguePoeticFiller.test(message.content) && !scenerySubstitute.test(message.content) && !sceneRelocationFiller.test(message.content) && !genericSceneFacilitator.test(message.content) && !hasTextEncodingDrift(message.content));
+  return messages.filter((message) => message.role !== "assistant" || !genericFalseBoundary.test(message.content) && !cannedRepairAnchor.test(message.content) && !evasiveOptionAnchor.test(message.content) && !vagueSceneReset.test(message.content) && !transcriptEcho.test(message.content) && !vaguePoeticFiller.test(message.content) && !scenerySubstitute.test(message.content) && !sceneRelocationFiller.test(message.content) && !genericSceneFacilitator.test(message.content) && !cannedRoleplayLanguage.test(message.content) && !hasTextEncodingDrift(message.content));
 }
 
 export function singleAssistantTurn(reply: string) {
@@ -99,6 +99,7 @@ export function isSpicySceneStyleDrift(reply: string, relationship: Relationship
   if (relationship.intensity !== "spicy" && !replySignalsIntimateScene) return false;
   if (!ongoingAdultContext && !replySignalsIntimateScene) return false;
   if (/\b(?:workout|exercise|stretch(?:ing)?|wellness activity)\b/i.test(reply)) return true;
+  if (hasCannedRoleplayDrift(reply)) return true;
   if (/\b(?:I understand your invitation|I know exactly what you mean|keep our intimate moment|let'?s explore (?:some )?(?:playful and )?intimate|continue (?:our|this) intimate exploration|fantasies are dancing|take off some layers)\b/i.test(reply)) return true;
   if (/\b(?:your words (?:send|stir|are like fire)|Oh,? I see|interesting thought|I decide to lean|our breaths mingle|heartbeats? sync(?:ing)?|world fades away|private universe|erotic dance|intoxicating curiosity|fervor and devotion|exploring every inch)\b/i.test(reply)) return true;
   if (/\b(?:morning light (?:catches|dims)|sun (?:glints|catches)|boards? (?:beneath us )?creak|shared beat|shared release|deeper haze|perfect sync|stride for stride|shared intimacy|intimate connection|intertwined (?:bodies|connection)|shared (?:pleasure|desire)|playful adventure|basking in the afterglow|connection we share|savor what (?:just )?happened|depths? of our (?:shared )?desire|take things one step at a time|glad I could bring you joy|let'?s explore (?:a little )?more|both of us (?:sinking|spent|lost)|we (?:both )?(?:come crashing|move together|sink into))\b/i.test(reply)) return true;
@@ -116,6 +117,39 @@ const genericSceneFacilitator = /\b(?:oh,? that'?s (?:interesting|a fun (?:twist
 
 export function hasTextEncodingDrift(reply: string) {
   return /(?:â€|â€™|â€œ|â€�|Ã.|Â.|ï¿½|\uFFFD)/.test(reply);
+}
+
+export function repairTextEncoding(text: string) {
+  return text
+    .replace(/â€™/g, "’")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€œ/g, "“")
+    .replace(/â€�/g, "”")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/Â(?=\s)/g, "");
+}
+
+const cannedRoleplayLanguage = /\b(?:I (?:giggle|chuckle|laugh softly) at your (?:response|compliment|touch|tone|playful tone)|explore your body|heat of our connection|shared excitement|intimate dance|crazy train takes us|matching your intensity|see where (?:this|that|the) .* takes us)\b/i;
+
+export function hasCannedRoleplayDrift(reply: string) {
+  return cannedRoleplayLanguage.test(reply);
+}
+
+export function hasDirectTouchContinuityDrift(reply: string, userText: string) {
+  const userRespondsToCurrentTouch = /\b(?:your|that) touch\b[\s\S]{0,55}\b(?:tingl|crazy|drives?|feels?|love|yes|more)\w*/i.test(userText);
+  if (!userRespondsToCurrentTouch) return false;
+  const unrelatedNewTarget = /\b(?:run(?:ning)? my fingers through your hair|tap(?:ping)? your nose|lean(?:ing)? in for (?:another )?(?:exploratory )?kiss)\b/i.test(reply)
+    && !/\b(?:hair|nose|kiss)\b/i.test(userText);
+  const vagueSubstitute = /\b(?:explore your body|our connection|shared excitement|matching your intensity|intimate dance)\b/i.test(reply);
+  return unrelatedNewTarget || vagueSubstitute;
+}
+
+export function hasParticipantAnatomyDrift(reply: string, userText: string) {
+  const userTouchesMultipleOtherParticipants = /\b(?:both|the two of you|you (?:two|2))\b[\s\S]{0,55}\b(?:your|you)\b[\s\S]{0,35}\b(?:puss(?:y|ies)|clits?|breasts?|boobs?)\b/i.test(userText)
+    || /\bplay with both your (?:puss(?:y|ies)|clits?|breasts?|boobs?)\b/i.test(userText);
+  const replyAssignsThatAnatomyToUser = /\b(?:your folds|your pussy|your clit|inside your (?:pussy|vagina))\b/i.test(reply);
+  return userTouchesMultipleOtherParticipants && replyAssignsThatAnatomyToUser;
 }
 
 export function hasLatestActionOmission(reply: string, userText: string) {
@@ -158,6 +192,12 @@ export function hasRecentAssistantEcho<T extends Pick<Message, "role" | "content
     const previous = normalize(message.content);
     if (!previous) return false;
     if (candidate.includes(previous) || previous.includes(candidate)) return true;
+    const candidateTokens = candidate.split(" ");
+    const previousText = ` ${previous} `;
+    for (let index = 0; index <= candidateTokens.length - 5; index += 1) {
+      const phrase = candidateTokens.slice(index, index + 5).join(" ");
+      if (phrase.length >= 24 && previousText.includes(` ${phrase} `)) return true;
+    }
     const candidateWords = new Set(candidate.split(" ").filter((word) => word.length > 3));
     const previousWords = new Set(previous.split(" ").filter((word) => word.length > 3));
     if (candidateWords.size < 6 || previousWords.size < 6) return false;
@@ -270,6 +310,8 @@ export class OllamaClient {
   ) {}
 
   async chat(profile: Record<string, unknown>, history: Message[], memories: Memory[], style: StyleProfile | null, relationship: RelationshipSettings, userText: string, options: { photoWillBeGenerated?: boolean } = {}) {
+    userText = repairTextEncoding(userText);
+    history = history.map((message) => ({ ...message, content: repairTextEncoding(message.content) }));
     const relevantMemories = rankMemories(memories, userText).map((item) => item.memory);
     const conversation = buildConversationWindow(history);
     const familyFacts = extractEmilyFamilyFacts(relevantMemories, userText);
@@ -321,13 +363,16 @@ export class OllamaClient {
       || hasRecentAssistantEcho(candidate, conversation.messages)
       || hasLatestActionOmission(candidate, userText)
       || hasInventedThirdPartyReaction(candidate, userText, familyFacts)
+      || hasCannedRoleplayDrift(candidate)
+      || hasDirectTouchContinuityDrift(candidate, userText)
+      || hasParticipantAnatomyDrift(candidate, userText)
       || hasTextEncodingDrift(candidate);
     let repairedScene = false;
     if (needsSceneRepair(reply)) {
       repairedScene = true;
       reply = await this.complete([
         ...messages,
-        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Keep strict speaker ownership: first-person actions in the user's message belong to the user; Emily's first-person narration belongs only to Emily; a named third person's actions, speech, pregnancy, body, and reactions remain that person's. If the user acts toward Natalie, Emily observes or reacts as Emily and never answers as though the action happened to Emily. Never invent a new moan, sigh, giggle, arch, shiver, or other reaction for Natalie; use only reactions the user already stated. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give Emily anatomy or actions established as the user's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. If the user's latest words request an immediate action involving clothing, directly perform or begin that clothing action instead of replaying the preceding beat. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Never praise the user's storytelling, call a development interesting or fun, say the user is taking the lead, welcome someone into the mix, or say to continue exploring, join Natalie, dive into an exploration, or see where an adventure takes us. Do not repeat a sentence, action, or body detail from a recent reply. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only clean UTF-8 English as Emily's fresh reply, with no mention of these instructions." }
+        { role: "system", content: "The previous draft did not naturally continue the established adult roleplay. Rewrite it in Emily's first-person voice. Preserve every named adult who is already present, along with their exact location, posture, visible clothing state, and current action. Keep strict speaker ownership: first-person actions in the user's message belong to the user; Emily's first-person narration belongs only to Emily; a named third person's actions, speech, pregnancy, body, and reactions remain that person's. If the user acts toward Natalie, Emily observes or reacts as Emily and never answers as though the action happened to Emily. Never invent a new moan, sigh, giggle, arch, shiver, or other reaction for Natalie; use only reactions the user already stated. Never turn someone the user has already found into a person Emily still needs to go see, and never invent sleeping, napping, or another explanation the user did not provide. Preserve who is doing what from the recent conversation and never give the user anatomy established as Emily's or Natalie's. Treat the scene as collaborative narration: Emily may occasionally include one small, plausible immediate movement, sensation, or reaction for the user when it follows directly from established contact. Do not write the user's dialogue, make a major choice for the user, contradict the user, remove clothing, change location, or jump participants into a new position. If the user's latest words react to Emily's current touch, continue that exact contact; do not suddenly switch to the user's hair, nose, a kiss, or another body area. If the user's latest words request an immediate action involving clothing, directly perform or begin that clothing action instead of replaying the preceding beat. Advance only one immediate beat from the last established contact. Match the user's directness and contribute one new, specific in-character action instead of summarizing intent. Never begin with canned giggling, chuckling, or laughing at the user's response. Never use 'explore your body,' 'our connection,' 'shared excitement,' 'matching your intensity,' 'intimate dance,' or 'see where this takes us.' Never praise the user's storytelling, call a development interesting or fun, say the user is taking the lead, welcome someone into the mix, or say to continue exploring, join Natalie, dive into an exploration, or see where an adventure takes us. Do not repeat a sentence, action, or body detail from a recent reply. Keep nearly every word on Emily's immediate sensation, movement, or short spoken reaction. Do not use abstract romantic summaries involving a shared release, shared desire, intertwined connection, savoring the moment, joy, exploration, or taking things one step at a time. Do not pad the reply with sunlight, weather, shadows, air, floors, furniture, shared rhythms, haze, or generalized descriptions of the participants. Treat trying or hoping to conceive as a future hope; never claim Emily is pregnant or imagine a baby already growing unless the user established a confirmed pregnancy. Do not redirect to exercise, breathing, relaxation, a menu of alternatives, consent reminders, or repeated questions. Affection, massage, and cuddling remain welcome when requested or when they genuinely fit; never use them as an automatic detour. Return only clean UTF-8 English as Emily's fresh reply, with no mention of these instructions." }
       ], 0.66);
       const cleanSceneHistory = spicySafeHistory(conversation.messages, { intensity: "spicy" }).slice(-10);
       if (needsSceneRepair(reply)) {

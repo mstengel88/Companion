@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipGuidance, roleplayWritingGuidance } from "../src/services/relationship.js";
-import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
+import { compactRoleplayReply, correctRelationshipPerspective, everydaySafeHistory, effectiveRelationshipForConversation, extractEmilyFamilyFacts, groundedPresentDiscoveryReply, hasAdultConversationContext, hasCannedRoleplayDrift, hasDirectTouchContinuityDrift, hasFactualContinuityDrift, hasImmediateSceneContinuityDrift, hasInventedThirdPartyReaction, hasLatestActionOmission, hasParticipantAnatomyDrift, hasParticipantOwnershipDrift, hasRecentAssistantEcho, hasRelationshipPerspectiveDrift, hasTextEncodingDrift, isGenericActionDeflection, isGenericThirdPartySceneReply, isSpicyIntentDeflection, isSpicySceneStyleDrift, relationshipSafeHistory, repairTextEncoding, singleAssistantTurn, spicySafeHistory } from "../src/services/ollama.js";
 
 test("warm mode remains non-explicit", () => {
   assert.match(relationshipGuidance({ intensity: "warm" }), /non-explicit/);
@@ -170,6 +170,32 @@ test("rejects newly invented reactions for Natalie", () => {
 test("detects broken text encoding", () => {
   assert.equal(hasTextEncodingDrift("I slide my hand into yours as weâ€™re moving closer."), true);
   assert.equal(hasTextEncodingDrift("I slide my hand into yours as we're moving closer."), false);
+});
+
+test("repairs common mojibake before storing and prompting", () => {
+  assert.equal(repairTextEncoding("Letâ€™s move â€œcloserâ€�—slowly."), "Let’s move “closer”—slowly.");
+});
+
+test("rejects the canned gestures and summaries in the newest live replies", () => {
+  assert.equal(hasCannedRoleplayDrift("I chuckle at your response and continue to explore your body, matching your intensity."), true);
+  assert.equal(hasCannedRoleplayDrift("I keep my hand where it is and curl my fingers a little more firmly."), false);
+});
+
+test("keeps Emily's current touch on the same contact point", () => {
+  const userText = "Mmmmm yes baby, that touch drives me crazy.";
+  assert.equal(hasDirectTouchContinuityDrift("I run my fingers through your hair and tap your nose before leaning in for another kiss.", userText), true);
+  assert.equal(hasDirectTouchContinuityDrift("I keep the same slow stroke and press my fingertips a little more firmly.", userText), false);
+});
+
+test("does not assign Emily and Natalie's anatomy to the user", () => {
+  const userText = "I reach down and play with both your pussies.";
+  assert.equal(hasParticipantAnatomyDrift("I reciprocate by running my fingers through your folds.", userText), true);
+  assert.equal(hasParticipantAnatomyDrift("I keep my hand on you while Natalie stays close beside me.", userText), false);
+});
+
+test("detects a repeated five-word gesture inside otherwise different replies", () => {
+  const history = [{ role: "assistant" as const, content: "I chuckle and run my fingers through your hair before settling closer." }];
+  assert.equal(hasRecentAssistantEcho("I smile, run my fingers through your hair, and answer softly.", history), true);
 });
 
 test("Emily keeps ownership of her family relationships in first person", () => {
